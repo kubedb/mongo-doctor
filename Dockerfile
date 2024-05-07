@@ -6,6 +6,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /mongo-util
+RUN CGO_ENABLED=0 GOOS=linux go build -o /mongo-doctor
 
-CMD ["/mongo-util"]
+CMD ["/mongo-doctor"]

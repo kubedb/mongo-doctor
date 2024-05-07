@@ -56,7 +56,7 @@ func Run(client *mongo.Client) {
 		log.Fatal(err)
 	}
 	utils.WriteFile(dir, "_", indentedData)
-	klog.Infof("sleep starts. You can run `kubectl cp demo/util:/app/all-stats /tmp/data` now.")
+	klog.Infof("sleep starts. You can run `kubectl cp demo/<doctor-pod>:/app/all-stats /tmp/data` now.")
 	time.Sleep(time.Minute * 10)
 }
 

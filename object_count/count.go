@@ -151,8 +151,8 @@ func compare(m1, m2 map[string]dbObjCount) {
 		klog.Infof("Count didn't matched for DB %v. In %v=%v, %v=%v, %v=%v \n", dbname,
 			primaryPod, masterDBCount.total, secondaryOne, m1Count.total, secondaryTwo, m2Count.total)
 
-		klog.Infof("collections in %s -> %v \n", primaryPod, masterDBCount.collections)
-		klog.Infof("collections in %s -> %v \n", secondaryOne, m1Count.collections)
-		klog.Infof("collections in %s -> %v \n", secondaryTwo, m2Count.collections)
+		klog.Infof("collections for db=%s in %s -> %v \n", dbname, primaryPod, masterDBCount.collections)
+		klog.Infof("collections for db=%s in %s -> %v \n", dbname, secondaryOne, m1Count.collections)
+		klog.Infof("collections for db=%s in %s -> %v \n", dbname, secondaryTwo, m2Count.collections)
 	}
 }
