@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func collectionStats(db *mongo.Database, coll string) {
+func collectionStats(db *mongo.Database, coll, dir string) {
 	cmd := bson.D{{"collStats", coll}, {"scale", 1048576}}
 	var result bson.M
 	err := db.RunCommand(context.TODO(), cmd).Decode(&result)
@@ -39,7 +39,7 @@ func collectionStats(db *mongo.Database, coll string) {
 		log.Fatal(err)
 	}
 	utils.WriteFile(filepath.Join(dir, db.Name()), coll, indentedData)
-	specificFields(db, result)
+	specificFields(db, result, dir)
 }
 
 /*
@@ -63,7 +63,7 @@ func collectionStats(db *mongo.Database, coll string) {
 }
 */
 
-func specificFields(db *mongo.Database, result bson.M) {
+func specificFields(db *mongo.Database, result bson.M, dir string) {
 	output := make(bson.M)
 	for s, obj := range result {
 		switch s {

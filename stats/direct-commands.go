@@ -9,7 +9,7 @@ import (
 	"log"
 )
 
-func direct(db *mongo.Database, mongoCommand string) {
+func direct(db *mongo.Database, mongoCommand, dir string) {
 	cmd := bson.D{{mongoCommand, 1}}
 	var result bson.M
 	err := db.RunCommand(context.TODO(), cmd).Decode(&result)

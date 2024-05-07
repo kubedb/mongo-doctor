@@ -3,7 +3,7 @@
 
 ### Run
 ```bash
-Edit the yamls/pod.yaml file to set the ENVs
+Edit the yamls/job.yaml file to set the ENVs
 
 make
 ```
