@@ -10,7 +10,7 @@ spec:
       - name: doctor
         env:
         - name: MONGODB_NAME
-          value: "source"
+          value: "large"
         - name: MONGODB_NAMESPACE
           value: "demo"
         resources:

@@ -55,7 +55,7 @@ func CompareObjectsCount(pc, so, st *mongo.Client) (int64, error) {
 
 			for _, collectionName := range collectionNames {
 				if !utils.SkipCollection(collectionName) {
-					count, err := pc.Database(dbname).Collection(collectionName).CountDocuments(context.TODO(), bson.D{})
+					count, err := pc.Database(dbname).Collection(collectionName).EstimatedDocumentCount(context.TODO())
 					if err != nil {
 						return -1, err
 					}
@@ -105,7 +105,7 @@ func countForSecondary(sc *mongo.Client, sDBMap map[string]dbObjCount) error {
 
 		for _, collectionName := range collectionNames {
 			if !utils.SkipCollection(collectionName) {
-				count, err := sc.Database(dbname).Collection(collectionName).CountDocuments(context.TODO(), bson.D{})
+				count, err := sc.Database(dbname).Collection(collectionName).EstimatedDocumentCount(context.TODO())
 				if err != nil {
 					return err
 				}
