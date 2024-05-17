@@ -24,7 +24,6 @@ var (
 
 	shouldSkip = true
 	summed     bson.M
-	Dir        = "all-stats"
 
 	primaryPod   string
 	secondaryOne string
@@ -63,7 +62,7 @@ func Run(client *mongo.Client) {
 	start := time.Now()
 	klog.Infof("STATs starts at %v \n", start)
 
-	Collect(client, Dir+"/"+primaryPod)
+	Collect(client, utils.Dir+"/"+primaryPod)
 
 	tunnelOne, err := mongoclient.TunnelToDBPod(k8s.GetRESTConfig(), mg.Namespace, secondaryOne)
 	if err != nil {
@@ -93,12 +92,10 @@ func Run(client *mongo.Client) {
 		}
 	}()
 
-	Collect(so, Dir+"/"+secondaryOne)
-	Collect(st, Dir+"/"+secondaryTwo)
+	Collect(so, utils.Dir+"/"+secondaryOne)
+	Collect(st, utils.Dir+"/"+secondaryTwo)
 
 	klog.Infof("Getting stats took %s", time.Since(start))
-	klog.Infof("sleep starts. You can run `kubectl cp demo/<doctor-pod>:/app/all-stats /tmp/data` now.")
-	time.Sleep(time.Minute * 10)
 	//utils.MakeDir(dir)
 	//collMap := database.ListCollectionsForAllDatabases(client)
 	//for db, collections := range collMap {
@@ -129,7 +126,7 @@ func Run(client *mongo.Client) {
 	//	log.Fatal(err)
 	//}
 	//utils.WriteFile(dir, "_", indentedData)
-	//klog.Infof("sleep starts. You can run `kubectl cp demo/<doctor-pod>:/app/all-stats /tmp/data` now.")
+	//klog.Infof("sleep starts. You can run `kubectl cp demo/<doctor-pod>:/app/all /tmp/data` now.")
 	//time.Sleep(time.Minute * 10)
 }
 
@@ -164,6 +161,7 @@ func Collect(client *mongo.Client, dir string) {
 		log.Fatal(err)
 	}
 	utils.WriteFile(dir, "_", indentedData)
+	summed = nil
 }
 
 func databaseStats(db *mongo.Database, dir string) {
@@ -207,13 +205,21 @@ func sumUp(result bson.M) {
 				summed[s] = cur
 			}
 			summed[s] = cur.(float64) + obj.(float64)
-		case "indexes", "objects", "collections":
+		case "indexes", "collections":
 			cur, found := summed[s]
 			if !found {
 				cur = int32(0)
 				summed[s] = cur
 			}
 			summed[s] = cur.(int32) + obj.(int32)
+		case "objects":
+			cur, found := summed[s]
+			if !found {
+				cur = int64(0)
+				summed[s] = cur
+			}
+			inInt := obj.(int32)
+			summed[s] = cur.(int64) + int64(inInt)
 		}
 
 	}

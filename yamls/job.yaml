@@ -14,7 +14,7 @@ spec:
         - name: MONGODB_NAMESPACE
           value: "demo"
         - name: MONGODB_URI
-          value: "mongodb+srv://arnob:gOeu0EqLDoq1rvF4@cluster0.yzudzld.mongodb.net/"
+          value: "<URI>"
         resources:
           requests:
             cpu: 1

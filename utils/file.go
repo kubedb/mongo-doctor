@@ -1,19 +1,23 @@
 package utils
 
 import (
-	"k8s.io/klog/v2"
 	"log"
 	"os"
+)
+
+const (
+	Dir = "all"
 )
 
 func MakeDir(dir string) {
 	_, err := os.Stat(dir)
 	if err == nil {
-		klog.Infof("Directory %s already exists; cleaning up.\n", dir)
-		err = os.RemoveAll(dir)
-		if err != nil {
-			log.Fatal(err)
-		}
+		return
+		//klog.Infof("Directory %s already exists; cleaning up.\n", dir)
+		//err = os.RemoveAll(dir)
+		//if err != nil {
+		//	log.Fatal(err)
+		//}
 	}
 	err = os.MkdirAll(dir, 0755)
 	if err != nil {
