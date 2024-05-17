@@ -13,6 +13,8 @@ spec:
           value: "large"
         - name: MONGODB_NAMESPACE
           value: "demo"
+        - name: MONGODB_URI
+          value: "mongodb+srv://arnob:gOeu0EqLDoq1rvF4@cluster0.yzudzld.mongodb.net/"
         resources:
           requests:
             cpu: 1

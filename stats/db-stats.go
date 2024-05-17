@@ -24,7 +24,7 @@ var (
 
 	shouldSkip = true
 	summed     bson.M
-	dir        = "all-stats"
+	Dir        = "all-stats"
 
 	primaryPod   string
 	secondaryOne string
@@ -63,7 +63,7 @@ func Run(client *mongo.Client) {
 	start := time.Now()
 	klog.Infof("STATs starts at %v \n", start)
 
-	collect(client, dir+"/"+primaryPod)
+	Collect(client, Dir+"/"+primaryPod)
 
 	tunnelOne, err := mongoclient.TunnelToDBPod(k8s.GetRESTConfig(), mg.Namespace, secondaryOne)
 	if err != nil {
@@ -93,8 +93,8 @@ func Run(client *mongo.Client) {
 		}
 	}()
 
-	collect(so, dir+"/"+secondaryOne)
-	collect(st, dir+"/"+secondaryTwo)
+	Collect(so, Dir+"/"+secondaryOne)
+	Collect(st, Dir+"/"+secondaryTwo)
 
 	klog.Infof("Getting stats took %s", time.Since(start))
 	klog.Infof("sleep starts. You can run `kubectl cp demo/<doctor-pod>:/app/all-stats /tmp/data` now.")
@@ -133,7 +133,7 @@ func Run(client *mongo.Client) {
 	//time.Sleep(time.Minute * 10)
 }
 
-func collect(client *mongo.Client, dir string) {
+func Collect(client *mongo.Client, dir string) {
 	utils.MakeDir(dir)
 	collMap := database.ListCollectionsForAllDatabases(client)
 	for db, collections := range collMap {
