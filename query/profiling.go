@@ -5,11 +5,25 @@ import (
 	"encoding/json"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"os"
+	"strconv"
 	"time"
 )
 
 func SetDatabaseProfilingLevel(client *mongo.Client, db string) error {
-	return client.Database(db).RunCommand(context.TODO(), bson.D{{Key: "profile", Value: 2}}).Err()
+	slowms := os.Getenv("SLOW_MS")
+	if slowms == "" {
+		slowms = "0"
+	}
+	msInt, err := strconv.Atoi(slowms)
+	if err != nil {
+		return err
+	}
+	command := bson.D{
+		{Key: "profile", Value: 1},
+		{Key: "slowms", Value: msInt},
+	}
+	return client.Database(db).RunCommand(context.TODO(), command).Err()
 }
 
 func GetQueries(client *mongo.Client, db string) ([]map[string]interface{}, error) {

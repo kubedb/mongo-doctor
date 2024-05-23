@@ -42,6 +42,6 @@ func forAtlas() {
 			}
 		}()
 		stats.Collect(client, utils.Dir+"/"+"atlas")
-		query.Run(client, "atlas_queries")
+		//query.Run(client, "atlas_queries")
 	}
 }

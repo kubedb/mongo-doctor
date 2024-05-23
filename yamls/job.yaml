@@ -15,6 +15,8 @@ spec:
           value: "demo"
         - name: MONGODB_URI
           value: "<URI>"
+        - name: SLOW_MS
+          value: "2"
         resources:
           requests:
             cpu: 1
