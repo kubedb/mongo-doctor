@@ -4,6 +4,7 @@ go 1.22.1
 
 require (
 	go.mongodb.org/mongo-driver v1.12.1
+	gomodules.xyz/pointer v0.1.0
 	k8s.io/api v0.29.3
 	k8s.io/apimachinery v0.29.3
 	k8s.io/client-go v0.29.3
@@ -81,7 +82,6 @@ require (
 	gomodules.xyz/encoding v0.0.7 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	gomodules.xyz/mergo v0.3.13 // indirect
-	gomodules.xyz/pointer v0.1.0 // indirect
 	gomodules.xyz/sets v0.2.1 // indirect
 	gomodules.xyz/x v0.0.17 // indirect
 	google.golang.org/appengine v1.6.8 // indirect

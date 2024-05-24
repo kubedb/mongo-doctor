@@ -14,7 +14,7 @@ spec:
         - name: MONGODB_NAMESPACE
           value: "demo"
         - name: MONGODB_URI
-          value: "<URI>"
+          value: "<>"
         - name: SLOW_MS
           value: "2"
         resources:
