@@ -48,7 +48,7 @@ const (
 // Snapshot represents the state of a backup run to a particular Repository.
 // Multiple components of the same target may be backed up in the same Snapshot.
 // This is a namespaced CRD. It should be in the same namespace as the respective Repository.
-// Stash operator is responsible for creating Snapshot CR.
+// KubeStash operator is responsible for creating Snapshot CR.
 // Snapshot is not supposed to be created/edited by the end user.
 type Snapshot struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -95,7 +95,7 @@ type SnapshotSpec struct {
 	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`
 
 	// Paused specifies whether the Snapshot is paused or not. If the Snapshot is paused,
-	// Stash will not process any further event for the Snapshot.
+	// KubeStash will not process any further event for the Snapshot.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
 }
@@ -109,6 +109,10 @@ type SnapshotStatus struct {
 	// VerificationStatus specifies whether this Snapshot has been verified or not
 	// +optional
 	VerificationStatus VerificationStatus `json:"verificationStatus,omitempty"`
+
+	// VerificationSession specifies which BackupVerificationSession verified this Snapshot
+	// +optional
+	VerificationSession string `json:"verificationSession,omitempty"`
 
 	// SnapshotTime represents the timestamp when this Snapshot was taken.
 	// +optional
@@ -194,12 +198,39 @@ type Component struct {
 	// +optional
 	ResticStats []ResticStats `json:"resticStats,omitempty"`
 
+	// WalGStats specifies the "WalG" driver specific information
+	// +optional
+	WalGStats *WalGStats `json:"walGStats,omitempty"`
+
 	// VolumeSnapshotterStats specifies the "VolumeSnapshotter" driver specific information
 	// +optional
 	VolumeSnapshotterStats []VolumeSnapshotterStats `json:"volumeSnapshotterStats,omitempty"`
 
-	// WalSegments specifies a list of wall segment for individual component
-	WalSegments []WalSegment `json:"walSegments,omitempty"`
+	LogStats *LogStats `json:"logStats,omitempty"`
+}
+
+type LogStats struct {
+	// Start represents the start time of the first log, that exists in the repository
+	// TODO: Need to update this start time, once the log-retention gets implemented
+	Start *string `json:"start,omitempty"`
+	// End represents the last end time of the log push
+	// Start & End together holds the full time-range. Not individual log.
+	End *string `json:"end,omitempty"`
+	// Lsn for PostgreSQL only
+	// +optional
+	Lsn *string `json:"lsn,omitempty"`
+
+	TotalFailedCount int64 `json:"totalFailedCount,omitempty"`
+	LastFailedStats  []Log `json:"lastFailedStats,omitempty"`
+
+	TotalSucceededCount int64 `json:"totalSucceededCount,omitempty"`
+	LastSucceededStats  []Log `json:"lastSucceededStats,omitempty"`
+}
+
+type Log struct {
+	Start *string `json:"start,omitempty"`
+	End   *string `json:"end,omitempty"`
+	Error string  `json:"error,omitempty"`
 }
 
 // ComponentPhase represents the backup phase of the individual component.
@@ -229,6 +260,14 @@ type ResticStats struct {
 	// Size represents the restic snapshot size
 	// +optional
 	Size string `json:"size,omitempty"`
+
+	// StartTime represents the timestamp at which the restic command was triggered
+	// +optional
+	StartTime *metav1.Time `json:"startTime,omitempty"`
+
+	// EndTime represents the timestamp at which the restic command successfully executed
+	// +optional
+	EndTime *metav1.Time `json:"endTime,omitempty"`
 }
 
 // VolumeSnapshotterStats specifies the "VolumeSnapshotter" driver specific information
@@ -250,10 +289,22 @@ type VolumeSnapshotterStats struct {
 	VolumeSnapshotTime *metav1.Time `json:"volumeSnapshotTime,omitempty"`
 }
 
-// WalSegment specifies the "WalG" driver specific information
-type WalSegment struct {
-	Start *metav1.Time `json:"start,omitempty"`
-	End   *metav1.Time `json:"end,omitempty"`
+// WalGStats specifies the information specific to the "WalG" driver.
+type WalGStats struct {
+	// Id represents the WalG snapshot ID.
+	Id string `json:"id,omitempty"`
+
+	// Databases represents the list of target backup databases.
+	// +optional
+	Databases []string `json:"databases,omitempty"`
+
+	// StartTime represents the WalG backup start time.
+	// +optional
+	StartTime *metav1.Time `json:"startTime,omitempty"`
+
+	// StopTime represents the WalG backup stop time.
+	// +optional
+	StopTime *metav1.Time `json:"stopTime,omitempty"`
 }
 
 const (
@@ -264,6 +315,9 @@ const (
 	TypeRecentSnapshotListUpdated               = "RecentSnapshotListUpdated"
 	ReasonFailedToUpdateRecentSnapshotList      = "FailedToUpdateRecentSnapshotList"
 	ReasonSuccessfullyUpdatedRecentSnapshotList = "SuccessfullyUpdatedRecentSnapshotList"
+
+	TypeBackupIncomplete                           = "BackupIncomplete"
+	ReasonBackupExecutorTerminatedBeforeCompletion = "BackupExecutorTerminatedBeforeCompletion"
 )
 
 //+kubebuilder:object:root=true

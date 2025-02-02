@@ -18,15 +18,14 @@ package v1alpha1
 
 import (
 	"fmt"
+	"kmodules.xyz/client-go/apiextensions"
+	cutil "kmodules.xyz/client-go/conditions"
+	"kmodules.xyz/client-go/meta"
 	"kubestash.dev/apimachinery/apis"
 	"kubestash.dev/apimachinery/crds"
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"kmodules.xyz/client-go/apiextensions"
-	cutil "kmodules.xyz/client-go/conditions"
-	"kmodules.xyz/client-go/meta"
 )
 
 func (_ Snapshot) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
@@ -35,7 +34,8 @@ func (_ Snapshot) CustomResourceDefinition() *apiextensions.CustomResourceDefini
 
 func (s *Snapshot) CalculatePhase() SnapshotPhase {
 	if cutil.IsConditionFalse(s.Status.Conditions, TypeSnapshotMetadataUploaded) ||
-		cutil.IsConditionFalse(s.Status.Conditions, TypeRecentSnapshotListUpdated) {
+		cutil.IsConditionFalse(s.Status.Conditions, TypeRecentSnapshotListUpdated) ||
+		cutil.IsConditionTrue(s.Status.Conditions, TypeBackupIncomplete) {
 		return SnapshotFailed
 	}
 	if s.GetComponentsPhase() == SnapshotPending {

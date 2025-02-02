@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	catalog "kubedb.dev/apimachinery/apis/catalog/v1alpha1"
-	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -59,7 +59,7 @@ func (k *ConnectCluster) ValidateCreate() (admission.Warnings, error) {
 	if len(allErr) == 0 {
 		return nil, nil
 	}
-	return nil, apierrors.NewInvalid(schema.GroupKind{Group: "kafka.kubedb.com", Kind: "Kafka"}, k.Name, allErr)
+	return nil, apierrors.NewInvalid(schema.GroupKind{Group: "kafka.kubedb.com", Kind: "ConnectCluster"}, k.Name, allErr)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
@@ -86,10 +86,10 @@ func (k *ConnectCluster) ValidateDelete() (admission.Warnings, error) {
 	connectClusterLog.Info("validate delete", "name", k.Name)
 
 	var allErr field.ErrorList
-	if k.Spec.TerminationPolicy == api.TerminationPolicyDoNotTerminate {
-		allErr = append(allErr, field.Invalid(field.NewPath("spec").Child("terminationPolicy"),
+	if k.Spec.DeletionPolicy == dbapi.DeletionPolicyDoNotTerminate {
+		allErr = append(allErr, field.Invalid(field.NewPath("spec").Child("deletionPolicy"),
 			k.Name,
-			"Can not delete as terminationPolicy is set to \"DoNotTerminate\""))
+			"Can not delete as deletionPolicy is set to \"DoNotTerminate\""))
 		return nil, apierrors.NewInvalid(schema.GroupKind{Group: "kafka.kubedb.com", Kind: "ConnectCluster"}, k.Name, allErr)
 	}
 	return nil, nil
@@ -111,10 +111,10 @@ func (k *ConnectCluster) ValidateCreateOrUpdate() field.ErrorList {
 		}
 	}
 
-	if k.Spec.TerminationPolicy == api.TerminationPolicyHalt {
-		allErr = append(allErr, field.Invalid(field.NewPath("spec").Child("terminationPolicy"),
+	if k.Spec.DeletionPolicy == dbapi.DeletionPolicyHalt {
+		allErr = append(allErr, field.Invalid(field.NewPath("spec").Child("deletionPolicy"),
 			k.Name,
-			"TerminationPolicyHalt is not supported for ConnectCluster"))
+			"DeletionPolicyHalt is not supported for ConnectCluster"))
 	}
 
 	// number of replicas can not be 0 or less

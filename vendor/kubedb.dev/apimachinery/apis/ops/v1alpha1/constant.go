@@ -101,6 +101,19 @@ const (
 	IssueCertificatesFailed    = "IssueCertificatesFailed"
 )
 
+// RotateAuth
+const (
+	RotateAuth                     = "RotateAuth"
+	UpdateCredential               = "UpdateCredential"
+	BasicAuthPreviousUsernameKey   = "username.prev"
+	BasicAuthPreviousPasswordKey   = "password.prev"
+	BasicAuthNextUsernameKey       = "username.next"
+	BasicAuthNextPasswordKey       = "password.next"
+	SecretAlreadyUpdatedAnnotation = "secret-already-updated"
+	AuthDataPreviousKey            = "authData.prev"
+	PatchDefaultConfig             = "PatchDefaultConfig"
+)
+
 // Restart
 const (
 	Restart              = "Restart"
@@ -110,6 +123,13 @@ const (
 	RestartPodsFailed    = "RestartPodsFailed"
 )
 
+// Reload
+const (
+	ReloadPods          = "ReloadPods"
+	ReloadPodsSucceeded = "ReloadPodsSucceeded"
+	ReloadPodsFailed    = "ReloadPodsFailed"
+)
+
 // StatefulSets
 const (
 	UpdateStatefulSets          = "UpdateStatefulSets"
@@ -117,6 +137,17 @@ const (
 	UpdateStatefulSetsFailed    = "UpdateStatefulSetsFailed"
 	ReadyStatefulSets           = "ReadyStatefulSets"
 	DeleteStatefulSets          = "DeleteStatefulSets"
+	OrphanStatefulSetPods       = "OrphanStatefulSetPods"
+)
+
+// PetSets
+const (
+	UpdatePetSets          = "UpdatePetSets"
+	UpdatePetSetsSucceeded = "UpdatePetSetsSucceeded"
+	UpdatePetSetsFailed    = "UpdatePetSetsFailed"
+	ReadyPetSets           = "ReadyPetSets"
+	DeletePetSets          = "DeletePetSets"
+	OrphanPetSetPods       = "OrphanPetSetPods"
 )
 
 // Stash
@@ -129,10 +160,10 @@ const (
 
 // Elasticsearch Constant
 const (
-	OrphanStatefulSetPods     = "OrphanStatefulSetPods"
-	PrepareCustomConfig       = "PrepareCustomConfig"
-	PrepareSecureCustomConfig = "PrepareSecureCustomConfig"
-	ReconfigureSecurityAdmin  = "ReconfigureSecurityAdmin"
+	PrepareCustomConfig               = "PrepareCustomConfig"
+	PrepareSecureCustomConfig         = "PrepareSecureCustomConfig"
+	ReconfigureSecurityAdmin          = "ReconfigureSecurityAdmin"
+	DisabledMasterNodeShardAllocation = "DisabledMasterNodeShardAllocation"
 
 	HorizontalScaleMasterNode       = "HorizontalScaleMasterNode"
 	HorizontalScaleDataNode         = "HorizontalScaleDataNode"
@@ -146,6 +177,8 @@ const (
 	HorizontalScaleCoordinatingNode = "HorizontalScaleCoordinatingNode"
 	HorizontalScaleIngestNode       = "HorizontalScaleIngestNode"
 	HorizontalScaleCombinedNode     = "HorizontalScaleCombinedNode"
+	HorizontalScaleOverseerNode     = "HorizontalScaleOverseerNode"
+	HorizontalScaleCoordinatorNode  = "HorizontalScaleCoordinatorNode"
 
 	VolumeExpansionCombinedNode     = "VolumeExpansionCombinedNode"
 	VolumeExpansionMasterNode       = "VolumeExpansionMasterNode"
@@ -159,6 +192,8 @@ const (
 	VolumeExpansionMLNode           = "VolumeExpansionMLNode"
 	VolumeExpansionTransformNode    = "VolumeExpansionTransformNode"
 	VolumeExpansionCoordinatingNode = "VolumeExpansionCoordinatingNode"
+	VolumeExpansionOverseerNode     = "VolumeExpansionOverseerNode"
+	VolumeExpansionCoordinatorNode  = "VolumeExpansionCoordinatorNode"
 )
 
 // Kafka Constants
@@ -173,6 +208,20 @@ const (
 	UpdateBrokerNodePVCs     = "UpdateBrokerNodePVCs"
 	UpdateControllerNodePVCs = "UpdateControllerNodePVCs"
 	UpdateCombinedNodePVCs   = "UpdateCombinedNodePVCs"
+)
+
+// Singlestore Constants
+const (
+	ScaleUpAggregator   = "ScaleUpAggregator"
+	ScaleDownAggregator = "ScaleDownAggregator"
+	ScaleUpLeaf         = "ScaleUpLeaf"
+	ScaleDownLeaf       = "ScaleDownLeaf"
+)
+
+// RabbitMQ Constants
+const (
+	UpdateNodePVCs        = "UpdateNodePVCs"
+	EnableAllFeatureFlags = "EnableAllFeatureFlags"
 )
 
 // MongoDB Constants
@@ -237,7 +286,11 @@ const (
 
 // MySQL/MariaDB Constants
 const (
-	TempIniFilesPath = "/tmp/kubedb-custom-ini-files"
+	TempIniFilesPath           = "/tmp/kubedb-custom-ini-files"
+	StopRemoteReplica          = "StopRemoteReplica"
+	DBPatch                    = "DBPatch"
+	StopRemoteReplicaSucceeded = "StopRemoteReplicaSucceeded"
+	DBPatchSucceeded           = "DBPatchSucceeded"
 )
 
 // Postgres Constants
@@ -271,4 +324,43 @@ const (
 	HorizontalScaleReplicasDown = "HorizontalScaleReplicasDown"
 	HorizontalScaleSentinelUp   = "HorizontalScaleSentinelUp"
 	HorizontalScaleSentinelDown = "HorizontalScaleSentinelDown"
+)
+
+// Druid Constants
+const (
+	ScaleUpCoordinators   = "ScaleUpCoordinators"
+	ScaleUpOverlords      = "ScaleUpOverlords"
+	ScaleUpBrokers        = "ScaleUpBrokers"
+	ScaleUpHistoricals    = "ScaleUpHistoricals"
+	ScaleUpMiddleManagers = "ScaleUpMiddleManagers"
+	ScaleUpRouters        = "ScaleUpRouters"
+
+	ScaleDownCoordinators   = "ScaleDownCoordinators"
+	ScaleDownOverlords      = "ScaleDownOverlords"
+	ScaleDownBrokers        = "ScaleDownBrokers"
+	ScaleDownHistoricals    = "ScaleDownHistoricals"
+	ScaleDownMiddleManagers = "ScaleDownMiddleManagers"
+	ScaleDownRouters        = "ScaleDownRouters"
+
+	UpdateMiddleManagersNodePVCs = "UpdateMiddleManagersNodePVCs"
+	UpdateHistoricalsNodePVCs    = "UpdateHistoricalsNodePVCs"
+
+	UpdateCredentialDynamically = "UpdateCredentialDynamically"
+)
+
+// SingleStore Constants
+const (
+	UpdateAggregatorNodePVCs = "UpdateAggregatorNodePVCs"
+	UpdateLeafNodePVCs       = "UpdateLeafNodePVCs"
+)
+
+// PgBouncer Constants
+const (
+	UpdatePgBouncerBackendSecret = "UpdateBackendSecret"
+	ConfigSecretDelete           = "ConfigSecretDeleted"
+)
+
+// Pgpool Constants
+const (
+	UpdateConfigSecret = "UpdateConfigSecret"
 )

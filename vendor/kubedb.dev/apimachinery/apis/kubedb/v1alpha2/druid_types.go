@@ -39,7 +39,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=dr,scope=Namespaced
+// +kubebuilder:resource:path=druids,singular=druid,shortName=dr,categories={datastore,kubedb,appscode,all}
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".apiVersion"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
@@ -54,9 +54,6 @@ type Druid struct {
 
 // DruidSpec defines the desired state of Druid
 type DruidSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Version of Druid to be deployed.
 	Version string `json:"version"`
 
@@ -64,29 +61,38 @@ type DruidSpec struct {
 	// +optional
 	Topology *DruidClusterTopology `json:"topology,omitempty"`
 
-	// StorageType can be durable (default) or ephemeral.
-	StorageType StorageType `json:"storageType,omitempty"`
-
 	// disable security. It disables authentication security of user.
 	// If unset, default is false
 	// +optional
-	DisableSecurity *bool `json:"disableSecurity,omitempty"`
+	DisableSecurity bool `json:"disableSecurity,omitempty"`
 
 	// Database authentication secret
 	// +optional
-	AuthSecret *core.LocalObjectReference `json:"authSecret,omitempty"`
+	AuthSecret *SecretReference `json:"authSecret,omitempty"`
+
+	// Init is used to initialize database
+	// +optional
+	Init *InitSpec `json:"init,omitempty"`
 
 	// ConfigSecret is an optional field to provide custom configuration file for database (i.e. config.properties).
 	// If specified, this file will be used as configuration file otherwise default configuration file will be used.
 	// +optional
 	ConfigSecret *core.LocalObjectReference `json:"configSecret,omitempty"`
 
-	//// TLS contains tls configurations
-	//// +optional
-	//TLS *kmapi.TLSConfig `json:"tls,omitempty"`
+	// To enable ssl for http layer
+	EnableSSL bool `json:"enableSSL,omitempty"`
+
+	// Keystore encryption secret
+	// +optional
+	KeystoreCredSecret *SecretReference `json:"keystoreCredSecret,omitempty"`
+
+	// TLS contains tls configurations
+	// +optional
+	TLS *kmapi.TLSConfig `json:"tls,omitempty"`
 
 	// MetadataStorage contains information for Druid to connect to external dependency metadata storage
-	MetadataStorage *MetadataStorage `json:"metadataStorage"`
+	// +optional
+	MetadataStorage *MetadataStorage `json:"metadataStorage,omitempty"`
 
 	// DeepStorage contains specification for druid to connect to the deep storage
 	DeepStorage *DeepStorageSpec `json:"deepStorage"`
@@ -94,10 +100,6 @@ type DruidSpec struct {
 	// ZooKeeper contains information for Druid to connect to external dependency metadata storage
 	// +optional
 	ZookeeperRef *ZookeeperRef `json:"zookeeperRef,omitempty"`
-
-	// PodTemplate is an optional configuration
-	// +optional
-	PodTemplate ofst.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// ServiceTemplates is an optional configuration for services used to expose database
 	// +optional
@@ -111,9 +113,9 @@ type DruidSpec struct {
 	// +optional
 	Monitor *mona.AgentSpec `json:"monitor,omitempty"`
 
-	// TerminationPolicy controls the delete operation for database
+	// DeletionPolicy controls the delete operation for database
 	// +optional
-	TerminationPolicy TerminationPolicy `json:"terminationPolicy,omitempty"`
+	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`
 
 	// HealthChecker defines attributes of the health checker
 	// +optional
@@ -122,21 +124,22 @@ type DruidSpec struct {
 }
 
 type DruidClusterTopology struct {
-	Coordinators *DruidNode `json:"coordinators"`
+	Coordinators *DruidNode `json:"coordinators,omitempty"`
 	// +optional
 	Overlords *DruidNode `json:"overlords,omitempty"`
 
-	MiddleManagers *DruidNode `json:"middleManagers"`
+	MiddleManagers *DruidDataNode `json:"middleManagers,omitempty"`
 
-	Historicals *DruidNode `json:"historicals"`
+	Historicals *DruidDataNode `json:"historicals,omitempty"`
 
-	Brokers *DruidNode `json:"brokers"`
+	Brokers *DruidNode `json:"brokers,omitempty"`
 	// +optional
 	Routers *DruidNode `json:"routers,omitempty"`
 }
 
 type DruidNode struct {
-	// Replicas represents number of replica for the specific type of node
+	// Replicas represents number of replicas for the specific type of node
+	// +kubebuilder:default=1
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 
@@ -144,32 +147,28 @@ type DruidNode struct {
 	// +optional
 	Suffix string `json:"suffix,omitempty"`
 
-	// Storage to specify how storage shall be used.
-	// +optional
-	Storage *core.PersistentVolumeClaimSpec `json:"storage,omitempty"`
-
 	// PodTemplate is an optional configuration for pods used to expose database
 	// +optional
 	PodTemplate ofst.PodTemplateSpec `json:"podTemplate,omitempty"`
+}
 
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	// +mapType=atomic
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// If specified, the pod's tolerations.
-	// +optional
-	Tolerations []core.Toleration `json:"tolerations,omitempty"`
+type DruidDataNode struct {
+	// DruidDataNode has all the characteristics of DruidNode
+	DruidNode `json:",inline"`
 
-	// PodPlacementPolicy is the reference of the podPlacementPolicy
-	// +kubebuilder:default={name: "default"}
-	// +optional
-	PodPlacementPolicy *core.LocalObjectReference `json:"podPlacementPolicy,omitempty"`
+	// StorageType specifies if the storage
+	// of this node is durable (default) or ephemeral.
+	StorageType StorageType `json:"storageType,omitempty"`
+
+	// Storage to specify how storage shall be used.
+	Storage *core.PersistentVolumeClaimSpec `json:"storage,omitempty"`
+
+	// EphemeralStorage spec to specify the configuration of ephemeral storage type.
+	EphemeralStorage *core.EmptyDirVolumeSource `json:"ephemeralStorage,omitempty"`
 }
 
 type MetadataStorage struct {
-	// Name of the appbinding of zookeeper
+	// Name and namespace of the appbinding of metadata storage
 	// +optional
 	*kmapi.ObjectReference `json:",omitempty"`
 
@@ -180,6 +179,16 @@ type MetadataStorage struct {
 	// If Druid has the permission to create new tables
 	// +optional
 	CreateTables *bool `json:"createTables,omitempty"`
+
+	// +optional
+	LinkedDB string `json:"linkedDB,omitempty"`
+
+	// +optional
+	ExternallyManaged bool `json:"externallyManaged,omitempty"`
+
+	// Version of the MySQL/PG used
+	// +optional
+	Version *string `json:"version,omitempty"`
 }
 
 type DeepStorageSpec struct {
@@ -194,22 +203,27 @@ type DeepStorageSpec struct {
 }
 
 type ZookeeperRef struct {
-	// Name of the appbinding of zookeeper
+	// Name and namespace of appbinding of zookeeper
 	// +optional
 	*kmapi.ObjectReference `json:",omitempty"`
 
 	// Base ZooKeeperSpec path
 	// +optional
 	PathsBase string `json:"pathsBase,omitempty"`
+
+	// +optional
+	ExternallyManaged bool `json:"externallyManaged,omitempty"`
+
+	// Version of the ZK used
+	// +optional
+	Version *string `json:"version,omitempty"`
 }
 
 // DruidStatus defines the observed state of Druid
 type DruidStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	// Specifies the current phase of the database
 	// +optional
-	Phase DruidPhase `json:"phase,omitempty"`
+	Phase DatabasePhase `json:"phase,omitempty"`
 	// observedGeneration is the most recent generation observed for this resource. It corresponds to the
 	// resource's generation, which is updated on mutation by the API Server.
 	// +optional
@@ -217,8 +231,6 @@ type DruidStatus struct {
 	// Conditions applied to the database, such as approval or denial.
 	// +optional
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
-	// +optional
-	Gateway *Gateway `json:"gateway,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -229,16 +241,6 @@ type DruidList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Druid `json:"items"`
 }
-
-// +kubebuilder:validation:Enum=Provisioning;Ready;NotReady;Critical
-type DruidPhase string
-
-const (
-	DruidPhaseProvisioning DruidPhase = "Provisioning"
-	DruidPhaseReady        DruidPhase = "Ready"
-	DruidPhaseNotReady     DruidPhase = "NotReady"
-	DruidPhaseCritical     DruidPhase = "Critical"
-)
 
 // +kubebuilder:validation:Enum=coordinators;overlords;brokers;routers;middleManagers;historicals
 type DruidNodeRoleType string
@@ -268,4 +270,12 @@ const (
 	DruidDeepStorageGoogle DruidDeepStorageType = "google"
 	DruidDeepStorageAzure  DruidDeepStorageType = "azure"
 	DruidDeepStorageHDFS   DruidDeepStorageType = "hdfs"
+)
+
+// +kubebuilder:validation:Enum=server;client
+type DruidCertificateAlias string
+
+const (
+	DruidServerCert DruidCertificateAlias = "server"
+	DruidClientCert DruidCertificateAlias = "client"
 )

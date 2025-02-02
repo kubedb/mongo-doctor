@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 	opsapi "kubedb.dev/apimachinery/apis/ops/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -91,7 +91,7 @@ func (in *RedisAutoscaler) ValidateCreate() (admission.Warnings, error) {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (in *RedisAutoscaler) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	redisLog.Info("validate create", "name", in.Name)
+	redisLog.Info("validate update", "name", in.Name)
 	return nil, in.validate()
 }
 

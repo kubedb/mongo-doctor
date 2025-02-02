@@ -17,10 +17,11 @@ limitations under the License.
 package v1alpha1
 
 import (
-	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kmapi "kmodules.xyz/client-go/api/v1"
+	storageapi "kubestash.dev/apimachinery/apis/storage/v1alpha1"
 )
 
 const (
@@ -57,9 +58,9 @@ type MariaDBArchiverSpec struct {
 	// FullBackup defines the session configuration for the full backup
 	// +optional
 	FullBackup *FullBackupOptions `json:"fullBackup"`
-	// WalBackup defines the sidekick configuration for the wal backup
+	// LogBackup defines the sidekick configuration for the log backup
 	// +optional
-	WalBackup *WalBackupOptions `json:"walBackup"`
+	LogBackup *LogBackupOptions `json:"logBackup"`
 	// ManifestBackup defines the session configuration for the manifest backup
 	// This options will eventually go to the manifest-backup job's yaml
 	// +optional
@@ -72,7 +73,7 @@ type MariaDBArchiverSpec struct {
 	BackupStorage *BackupStorage `json:"backupStorage"`
 	// DeletionPolicy defines the DeletionPolicy for the backup repository
 	// +optional
-	DeletionPolicy *DeletionPolicy `json:"deletionPolicy"`
+	DeletionPolicy *storageapi.BackupConfigDeletionPolicy `json:"deletionPolicy"`
 }
 
 // MariaDBArchiverStatus defines the observed state of MariaDBArchiver

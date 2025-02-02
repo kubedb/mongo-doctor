@@ -21,7 +21,6 @@ import (
 	core "k8s.io/api/core/v1"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ofst "kmodules.xyz/offshoot-api/api/v1"
 )
 
 const (
@@ -38,7 +37,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=redissentinelopsrequests,singular=redissentinelopsrequest,shortName=rdsops,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=redissentinelopsrequests,singular=redissentinelopsrequest,shortName=rdsops,categories={ops,kubedb,appscode}
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
@@ -66,6 +65,8 @@ type RedisSentinelOpsRequestSpec struct {
 	Configuration *RedisSentinelCustomConfigurationSpec `json:"configuration,omitempty"`
 	// Specifies information necessary for configuring TLS
 	TLS *TLSSpec `json:"tls,omitempty"`
+	// Specifies information necessary for configuring authSecret of the database
+	Authentication *AuthSpec `json:"authentication,omitempty"`
 	// Specifies information necessary for restarting database
 	Restart *RestartSpec `json:"restart,omitempty"`
 	// Timeout for each step of the ops request in second. If a step doesn't finish within the specified timeout, the ops request will result in failure.
@@ -75,8 +76,8 @@ type RedisSentinelOpsRequestSpec struct {
 	Apply ApplyOption `json:"apply,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=UpdateVersion;HorizontalScaling;VerticalScaling;Restart;Reconfigure;ReconfigureTLS
-// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, Restart, Reconfigure, ReconfigureTLS)
+// +kubebuilder:validation:Enum=UpdateVersion;HorizontalScaling;VerticalScaling;Restart;Reconfigure;ReconfigureTLS;RotateAuth
+// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, Restart, Reconfigure, ReconfigureTLS, RotateAuth)
 type RedisSentinelOpsRequestType string
 
 // RedisSentinelReplicaReadinessCriteria is the criteria for checking readiness of a RedisSentinel pod
@@ -108,11 +109,8 @@ type RedisSentinelVolumeExpansionSpec struct {
 }
 
 type RedisSentinelCustomConfigurationSpec struct {
-	// PodTemplate is an optional configuration for pods used to expose database
-	// +optional
-	PodTemplate        ofst.PodTemplateSpec       `json:"podTemplate,omitempty"`
 	ConfigSecret       *core.LocalObjectReference `json:"configSecret,omitempty"`
-	InlineConfig       string                     `json:"inlineConfig,omitempty"`
+	ApplyConfig        map[string]string          `json:"applyConfig,omitempty"`
 	RemoveCustomConfig bool                       `json:"removeCustomConfig,omitempty"`
 }
 

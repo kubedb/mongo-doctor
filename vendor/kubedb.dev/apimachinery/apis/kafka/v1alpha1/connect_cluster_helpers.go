@@ -25,7 +25,8 @@ import (
 	"kubedb.dev/apimachinery/apis"
 	catalog "kubedb.dev/apimachinery/apis/catalog/v1alpha1"
 	"kubedb.dev/apimachinery/apis/kafka"
-	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	"kubedb.dev/apimachinery/apis/kubedb"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 	"kubedb.dev/apimachinery/crds"
 
 	promapi "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -109,7 +110,7 @@ func (k *ConnectCluster) OffshootLabels() map[string]string {
 }
 
 // GetServiceTemplate returns a pointer to the desired serviceTemplate referred by "aliaS". Otherwise, it returns nil.
-func (k *ConnectCluster) GetServiceTemplate(templates []api.NamedServiceTemplateSpec, alias api.ServiceAlias) ofst.ServiceTemplateSpec {
+func (k *ConnectCluster) GetServiceTemplate(templates []dbapi.NamedServiceTemplateSpec, alias dbapi.ServiceAlias) ofst.ServiceTemplateSpec {
 	for i := range templates {
 		c := templates[i]
 		if c.Alias == alias {
@@ -119,7 +120,7 @@ func (k *ConnectCluster) GetServiceTemplate(templates []api.NamedServiceTemplate
 	return ofst.ServiceTemplateSpec{}
 }
 
-func (k *ConnectCluster) ServiceLabels(alias api.ServiceAlias, extraLabels ...map[string]string) map[string]string {
+func (k *ConnectCluster) ServiceLabels(alias dbapi.ServiceAlias, extraLabels ...map[string]string) map[string]string {
 	svcTemplate := k.GetServiceTemplate(k.Spec.ServiceTemplates, alias)
 	return k.offshootLabels(meta_util.OverwriteKeys(k.OffshootSelectors(), extraLabels...), svcTemplate.Labels)
 }
@@ -165,14 +166,14 @@ func (k *ConnectCluster) StatsService() mona.StatsAccessor {
 }
 
 func (k *ConnectCluster) StatsServiceLabels() map[string]string {
-	return k.ServiceLabels(api.StatsServiceAlias, map[string]string{LabelRole: RoleStats})
+	return k.ServiceLabels(dbapi.StatsServiceAlias, map[string]string{LabelRole: RoleStats})
 }
 
 func (k *ConnectCluster) PodLabels(extraLabels ...map[string]string) map[string]string {
 	return k.offshootLabels(meta_util.OverwriteKeys(k.OffshootSelectors(), extraLabels...), k.Spec.PodTemplate.Labels)
 }
 
-func (k *ConnectCluster) StatefulSetName() string {
+func (k *ConnectCluster) PetSetName() string {
 	return k.OffshootName()
 }
 
@@ -195,17 +196,23 @@ func (k *ConnectCluster) KafkaClientCredentialsSecretName() string {
 	return meta_util.NameWithSuffix(k.Name, "kafka-client-cred")
 }
 
-func (k *ConnectCluster) DefaultUserCredSecretName(username string) string {
-	return meta_util.NameWithSuffix(k.Name, strings.ReplaceAll(fmt.Sprintf("%s-cred", username), "_", "-"))
-}
-
-func (k *ConnectCluster) DefaultKeystoreCredSecretName() string {
-	return meta_util.NameWithSuffix(k.Name, strings.ReplaceAll("connect-keystore-cred", "_", "-"))
-}
-
 // CertificateName returns the default certificate name and/or certificate secret name for a certificate alias
 func (k *ConnectCluster) CertificateName(alias ConnectClusterCertificateAlias) string {
 	return meta_util.NameWithSuffix(k.Name, fmt.Sprintf("%s-connect-cert", string(alias)))
+}
+
+func (k *ConnectCluster) GetAuthSecretName() string {
+	if k.Spec.AuthSecret != nil && k.Spec.AuthSecret.Name != "" {
+		return k.Spec.AuthSecret.Name
+	}
+	return meta_util.NameWithSuffix(k.OffshootName(), "auth")
+}
+
+func (k *ConnectCluster) GetKeystoreSecretName() string {
+	if k.Spec.KeystoreCredSecret != nil && k.Spec.KeystoreCredSecret.Name != "" {
+		return k.Spec.KeystoreCredSecret.Name
+	}
+	return meta_util.NameWithSuffix(k.OffshootName(), "keystore-cred")
 }
 
 // GetCertSecretName returns the secret name for a certificate alias if any,
@@ -240,8 +247,8 @@ func (k *ConnectCluster) SetHealthCheckerDefaults() {
 }
 
 func (k *ConnectCluster) SetDefaults() {
-	if k.Spec.TerminationPolicy == "" {
-		k.Spec.TerminationPolicy = api.TerminationPolicyDelete
+	if k.Spec.DeletionPolicy == "" {
+		k.Spec.DeletionPolicy = dbapi.DeletionPolicyDelete
 	}
 
 	if k.Spec.Replicas == nil {
@@ -260,7 +267,7 @@ func (k *ConnectCluster) SetDefaults() {
 
 	dbContainer := coreutil.GetContainerByName(k.Spec.PodTemplate.Spec.Containers, ConnectClusterContainerName)
 	if dbContainer != nil && (dbContainer.Resources.Requests == nil && dbContainer.Resources.Limits == nil) {
-		apis.SetDefaultResourceLimits(&dbContainer.Resources, api.DefaultResources)
+		apis.SetDefaultResourceLimits(&dbContainer.Resources, kubedb.DefaultResources)
 	}
 
 	k.Spec.Monitor.SetDefaults()
@@ -316,7 +323,7 @@ func (k *ConnectCluster) setDefaultInitContainerSecurityContext(podTemplate *ofs
 		}
 
 		if initContainer != nil && (initContainer.Resources.Requests == nil && initContainer.Resources.Limits == nil) {
-			apis.SetDefaultResourceLimits(&initContainer.Resources, api.DefaultInitContainerResource)
+			apis.SetDefaultResourceLimits(&initContainer.Resources, kubedb.DefaultInitContainerResource)
 		}
 		if initContainer.SecurityContext == nil {
 			initContainer.SecurityContext = &core.SecurityContext{}
