@@ -20,7 +20,7 @@ package v1alpha1
 import (
 	"context"
 
-	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 	"kubedb.dev/apimachinery/crds"
 	"kubedb.dev/apimachinery/pkg/double_optin"
 
@@ -36,7 +36,7 @@ const (
 	MariaDBSuffix string = dbapi.ResourceSingularMariaDB
 )
 
-func (_ MariaDBDatabase) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
+func (MariaDBDatabase) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
 	return crds.MustCustomResourceDefinition(SchemeGroupVersion.WithResource(ResourceMariaDBDatabases))
 }
 

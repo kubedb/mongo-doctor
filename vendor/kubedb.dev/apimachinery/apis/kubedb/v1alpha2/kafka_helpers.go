@@ -43,6 +43,7 @@ import (
 	appcat "kmodules.xyz/custom-resources/apis/appcatalog/v1alpha1"
 	mona "kmodules.xyz/monitoring-agent-api/api/v1"
 	ofst "kmodules.xyz/offshoot-api/api/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (k *Kafka) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
@@ -91,15 +92,15 @@ func (k *Kafka) GoverningServiceName() string {
 }
 
 func (k *Kafka) GoverningServiceNameCruiseControl() string {
-	return meta_util.NameWithSuffix(k.ServiceName(), KafkaNodeRolesCruiseControl)
+	return meta_util.NameWithSuffix(k.ServiceName(), kubedb.KafkaNodeRolesCruiseControl)
 }
 
 func (k *Kafka) StandbyServiceName() string {
-	return meta_util.NameWithPrefix(k.ServiceName(), KafkaStandbyServiceSuffix)
+	return meta_util.NameWithPrefix(k.ServiceName(), kubedb.KafkaStandbyServiceSuffix)
 }
 
 func (k *Kafka) offshootLabels(selector, override map[string]string) map[string]string {
-	selector[meta_util.ComponentLabelKey] = ComponentDatabase
+	selector[meta_util.ComponentLabelKey] = kubedb.ComponentDatabase
 	return meta_util.FilterKeys(kubedb.GroupName, selector, meta_util.OverwriteKeys(nil, k.Labels, override))
 }
 
@@ -114,13 +115,13 @@ func (k *Kafka) OffshootSelectors(extraSelectors ...map[string]string) map[strin
 
 func (k *Kafka) ControllerNodeSelectors() map[string]string {
 	return meta_util.OverwriteKeys(k.OffshootSelectors(), map[string]string{
-		k.NodeRoleSpecificLabelKey(KafkaNodeRoleController): KafkaNodeRoleSet,
+		k.NodeRoleSpecificLabelKey(KafkaNodeRoleController): kubedb.KafkaNodeRoleSet,
 	})
 }
 
 func (k *Kafka) BrokerNodeSelectors() map[string]string {
 	return meta_util.OverwriteKeys(k.OffshootSelectors(), map[string]string{
-		k.NodeRoleSpecificLabelKey(KafkaNodeRoleBroker): KafkaNodeRoleSet,
+		k.NodeRoleSpecificLabelKey(KafkaNodeRoleBroker): kubedb.KafkaNodeRoleSet,
 	})
 }
 
@@ -166,7 +167,7 @@ func (ks kafkaStatsService) ServiceMonitorAdditionalLabels() map[string]string {
 }
 
 func (ks kafkaStatsService) Path() string {
-	return DefaultStatsPath
+	return kubedb.DefaultStatsPath
 }
 
 func (ks kafkaStatsService) Scheme() string {
@@ -178,7 +179,7 @@ func (k *Kafka) StatsService() mona.StatsAccessor {
 }
 
 func (k *Kafka) StatsServiceLabels() map[string]string {
-	return k.ServiceLabels(StatsServiceAlias, map[string]string{LabelRole: RoleStats})
+	return k.ServiceLabels(StatsServiceAlias, map[string]string{kubedb.LabelRole: kubedb.RoleStats})
 }
 
 func (k *Kafka) PodControllerLabels(extraLabels ...map[string]string) map[string]string {
@@ -216,9 +217,10 @@ func (k *Kafka) NodeRoleSpecificLabelKey(role KafkaNodeRoleType) string {
 }
 
 func (k *Kafka) ConfigSecretName(role KafkaNodeRoleType) string {
-	if role == KafkaNodeRoleController {
+	switch role {
+	case KafkaNodeRoleController:
 		return meta_util.NameWithSuffix(k.OffshootName(), "controller-config")
-	} else if role == KafkaNodeRoleBroker {
+	case KafkaNodeRoleBroker:
 		return meta_util.NameWithSuffix(k.OffshootName(), "broker-config")
 	}
 	return meta_util.NameWithSuffix(k.OffshootName(), "config")
@@ -239,8 +241,8 @@ func (k *Kafka) CruiseControlConfigSecretName() string {
 	return meta_util.NameWithSuffix(k.OffshootName(), "cruise-control-config")
 }
 
-func (k *Kafka) DefaultUserCredSecretName(username string) string {
-	return meta_util.NameWithSuffix(k.Name, strings.ReplaceAll(fmt.Sprintf("%s-cred", username), "_", "-"))
+func (k *Kafka) DefaultUserCredSecretName() string {
+	return meta_util.NameWithSuffix(k.OffshootName(), "auth")
 }
 
 func (k *Kafka) DefaultKeystoreCredSecretName() string {
@@ -298,9 +300,17 @@ func (k *Kafka) SetHealthCheckerDefaults() {
 	}
 }
 
-func (k *Kafka) SetDefaults() {
-	if k.Spec.TerminationPolicy == "" {
-		k.Spec.TerminationPolicy = TerminationPolicyDelete
+func (k *Kafka) SetDefaults(kc client.Client) {
+	if k.Spec.Halted {
+		if k.Spec.DeletionPolicy == DeletionPolicyDoNotTerminate {
+			klog.Errorf(`Can't halt, since deletion policy is 'DoNotTerminate'`)
+			return
+		}
+		k.Spec.DeletionPolicy = DeletionPolicyHalt
+	}
+
+	if k.Spec.DeletionPolicy == "" {
+		k.Spec.DeletionPolicy = DeletionPolicyDelete
 	}
 
 	if k.Spec.StorageType == "" {
@@ -308,7 +318,7 @@ func (k *Kafka) SetDefaults() {
 	}
 
 	var kfVersion catalog.KafkaVersion
-	err := DefaultClient.Get(context.TODO(), types.NamespacedName{Name: k.Spec.Version}, &kfVersion)
+	err := kc.Get(context.TODO(), types.NamespacedName{Name: k.Spec.Version}, &kfVersion)
 	if err != nil {
 		klog.Errorf("can't get the kafka version object %s for %s \n", err.Error(), k.Spec.Version)
 		return
@@ -339,7 +349,7 @@ func (k *Kafka) SetDefaults() {
 			}
 
 			if k.Spec.Topology.Controller.Resources.Requests == nil && k.Spec.Topology.Controller.Resources.Limits == nil {
-				apis.SetDefaultResourceLimits(&k.Spec.Topology.Controller.Resources, DefaultResources)
+				apis.SetDefaultResourceLimits(&k.Spec.Topology.Controller.Resources, kubedb.DefaultResources)
 			}
 		}
 
@@ -351,13 +361,13 @@ func (k *Kafka) SetDefaults() {
 				k.Spec.Topology.Broker.Replicas = pointer.Int32P(1)
 			}
 			if k.Spec.Topology.Broker.Resources.Requests == nil && k.Spec.Topology.Broker.Resources.Limits == nil {
-				apis.SetDefaultResourceLimits(&k.Spec.Topology.Broker.Resources, DefaultResources)
+				apis.SetDefaultResourceLimits(&k.Spec.Topology.Broker.Resources, kubedb.DefaultResources)
 			}
 		}
 	} else {
-		dbContainer := coreutil.GetContainerByName(k.Spec.PodTemplate.Spec.Containers, KafkaContainerName)
+		dbContainer := coreutil.GetContainerByName(k.Spec.PodTemplate.Spec.Containers, kubedb.KafkaContainerName)
 		if dbContainer != nil && (dbContainer.Resources.Requests == nil && dbContainer.Resources.Limits == nil) {
-			apis.SetDefaultResourceLimits(&dbContainer.Resources, DefaultResources)
+			apis.SetDefaultResourceLimits(&dbContainer.Resources, kubedb.DefaultResources)
 		}
 		if k.Spec.Replicas == nil {
 			k.Spec.Replicas = pointer.Int32P(1)
@@ -381,10 +391,10 @@ func (k *Kafka) setDefaultContainerSecurityContext(kfVersion *catalog.KafkaVersi
 	if podTemplate.Spec.SecurityContext.FSGroup == nil {
 		podTemplate.Spec.SecurityContext.FSGroup = kfVersion.Spec.SecurityContext.RunAsUser
 	}
-	dbContainer := coreutil.GetContainerByName(podTemplate.Spec.Containers, KafkaContainerName)
+	dbContainer := coreutil.GetContainerByName(podTemplate.Spec.Containers, kubedb.KafkaContainerName)
 	if dbContainer == nil {
 		dbContainer = &core.Container{
-			Name: KafkaContainerName,
+			Name: kubedb.KafkaContainerName,
 		}
 	}
 	if dbContainer.SecurityContext == nil {

@@ -37,7 +37,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=mongodbversions,singular=mongodbversion,scope=Cluster,shortName=mgversion,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=mongodbversions,singular=mongodbversion,scope=Cluster,shortName=mgversion,categories={catalog,kubedb,appscode}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="Distribution",type="string",JSONPath=".spec.distribution"
 // +kubebuilder:printcolumn:name="DB_IMAGE",type="string",JSONPath=".spec.db.image"
@@ -53,6 +53,11 @@ type MongoDBVersion struct {
 type MongoDBVersionSpec struct {
 	// Version
 	Version string `json:"version"`
+
+	// EndOfLife refers if this version reached into its end of the life or not, based on https://endoflife.date/
+	// +optional
+	EndOfLife bool `json:"endOfLife"`
+
 	// Distribution
 	Distribution MongoDBDistro `json:"distribution,omitempty"`
 	// Database Image
@@ -80,6 +85,8 @@ type MongoDBVersionSpec struct {
 	SecurityContext MongoDBSecurityContext `json:"securityContext"`
 	// Archiver defines the walg & kube-stash-addon related specifications
 	Archiver ArchiverSpec `json:"archiver,omitempty"`
+	// +optional
+	UI []ChartInfo `json:"ui,omitempty"`
 }
 
 // MongoDBVersionDatabase is the MongoDB Database image

@@ -37,7 +37,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=perconaxtradbversions,singular=perconaxtradbversion,scope=Cluster,shortName=pxversion,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=perconaxtradbversions,singular=perconaxtradbversion,scope=Cluster,shortName=pxversion,categories={catalog,kubedb,appscode}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="DB_IMAGE",type="string",JSONPath=".spec.db.image"
 // +kubebuilder:printcolumn:name="Deprecated",type="boolean",JSONPath=".spec.deprecated"
@@ -52,6 +52,11 @@ type PerconaXtraDBVersion struct {
 type PerconaXtraDBVersionSpec struct {
 	// Version
 	Version string `json:"version"`
+
+	// EndOfLife refers if this version reached into its end of the life or not, based on https://endoflife.date/
+	// +optional
+	EndOfLife bool `json:"endOfLife"`
+
 	// Database Image
 	DB PerconaXtraDBVersionDatabase `json:"db"`
 	// Exporter Image
@@ -76,6 +81,8 @@ type PerconaXtraDBVersionSpec struct {
 	// SecurityContext is for the additional config for the DB container
 	// +optional
 	SecurityContext SecurityContext `json:"securityContext"`
+	// +optional
+	UI []ChartInfo `json:"ui,omitempty"`
 }
 
 // PerconaXtraDBVersionDatabase is the perconaxtradb image

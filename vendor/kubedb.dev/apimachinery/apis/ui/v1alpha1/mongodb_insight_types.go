@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,7 +32,7 @@ const (
 type MongoDBInsightSpec struct {
 	Version        string                  `json:"version"`
 	Type           MongoDBMode             `json:"type"`
-	Status         api.DatabasePhase       `json:"status"`
+	Status         dbapi.DatabasePhase     `json:"status"`
 	Connections    *MongoDBConnectionsInfo `json:"connections,omitempty"`
 	DBStats        *MongoDBDatabaseStats   `json:"dbStats,omitempty"`
 	ShardsInfo     *MongoDBShardsInfo      `json:"shardsInfo,omitempty"`
@@ -67,13 +67,15 @@ type MongoDBShardsInfo struct {
 
 // MongoDBInsight is the Schema for the MongoDBInsights API
 
+// +genclient
+// +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type MongoDBInsight struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MongoDBInsightSpec `json:"spec,omitempty"`
-	Status api.MongoDBStatus  `json:"status,omitempty"`
+	Spec   MongoDBInsightSpec  `json:"spec,omitempty"`
+	Status dbapi.MongoDBStatus `json:"status,omitempty"`
 }
 
 // MongoDBInsightList contains a list of MongoDBInsight
@@ -83,8 +85,4 @@ type MongoDBInsightList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []MongoDBInsight `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&MongoDBInsight{}, &MongoDBInsightList{})
 }

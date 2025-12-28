@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -48,13 +48,15 @@ type RedisInsightSpec struct {
 
 // RedisInsight is the Schema for the redisinsights API
 
+// +genclient
+// +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type RedisInsight struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   RedisInsightSpec `json:"spec,omitempty"`
-	Status api.RedisStatus  `json:"status,omitempty"`
+	Spec   RedisInsightSpec  `json:"spec,omitempty"`
+	Status dbapi.RedisStatus `json:"status,omitempty"`
 }
 
 // RedisInsightList contains a list of RedisInsight
@@ -64,8 +66,4 @@ type RedisInsightList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []RedisInsight `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&RedisInsight{}, &RedisInsightList{})
 }

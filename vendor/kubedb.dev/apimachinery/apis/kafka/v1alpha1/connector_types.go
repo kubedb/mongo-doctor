@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +39,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=kc,scope=Namespaced
+// +kubebuilder:resource:path=connectors,singular=connector,shortName=kc,categories={kfstore,kubedb,appscode}
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".apiVersion"
 // +kubebuilder:printcolumn:name="ConnectCluster",type="string",JSONPath=".spec.connectClusterRef.name"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
@@ -61,9 +61,9 @@ type ConnectorSpec struct {
 	// ConfigSecret is a required field to provide configuration file for Connector to create connectors for Kafka connect cluster(i.e connector.properties).
 	ConfigSecret *core.LocalObjectReference `json:"configSecret"`
 
-	// TerminationPolicy controls the delete operation for Connector
+	// DeletionPolicy controls the delete operation for database
 	// +optional
-	TerminationPolicy api.TerminationPolicy `json:"terminationPolicy,omitempty"`
+	DeletionPolicy dbapi.DeletionPolicy `json:"deletionPolicy,omitempty"`
 }
 
 // ConnectorStatus defines the observed state of connectors
