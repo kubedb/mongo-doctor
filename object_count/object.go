@@ -3,14 +3,15 @@ package object_count
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"k8s.io/klog/v2"
 	kubedb "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/mongo-doctor/database"
 	"kubedb.dev/mongo-doctor/k8s"
 	"kubedb.dev/mongo-doctor/mongoclient"
-	"log"
-	"time"
 )
 
 var (
@@ -63,14 +64,14 @@ func Run(client *mongo.Client) {
 
 	start := time.Now()
 	klog.Infof("starts at %v \n", start)
-	so := mongoclient.ConnectToPod(tunnelOne, password)
+	so := mongoclient.ConnectToPod(tunnelOne, mg)
 	defer func() {
 		if err := so.Disconnect(context.Background()); err != nil {
 			log.Fatal(err)
 		}
 	}()
 
-	st := mongoclient.ConnectToPod(tunnelTwo, password)
+	st := mongoclient.ConnectToPod(tunnelTwo, mg)
 	defer func() {
 		if err := st.Disconnect(context.Background()); err != nil {
 			log.Fatal(err)

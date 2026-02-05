@@ -3,12 +3,14 @@ package stats
 import (
 	"context"
 	"encoding/json"
+	"log"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"kubedb.dev/mongo-doctor/utils"
-	"log"
 )
 
+// db.runCommand( { serverStatus: 1 } )
 func direct(db *mongo.Database, mongoCommand, dir string) {
 	cmd := bson.D{{mongoCommand, 1}}
 	var result bson.M

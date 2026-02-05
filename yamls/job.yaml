@@ -10,18 +10,18 @@ spec:
       - name: doctor
         env:
         - name: MONGODB_NAME
-          value: "large"
+          value: "mm" # mm / test
         - name: MONGODB_NAMESPACE
           value: "demo"
-        - name: MONGODB_URI
-          value: "<>"
-        - name: SLOW_MS
-          value: "2"
+#        - name: MONGODB_URI
+#          value: "<>"
+#        - name: SLOW_MS
+#          value: "2"
         resources:
           requests:
             cpu: 1
             memory: 1Gi
-        image: arnobkumarsaha/mongo-doctor
+        image: ghcr.io/arnobkumarsaha/mongo-doctor
         imagePullPolicy: Always
       serviceAccountName: mongo-doctor
       restartPolicy: Never

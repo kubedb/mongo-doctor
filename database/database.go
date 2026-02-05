@@ -2,11 +2,12 @@ package database
 
 import (
 	"context"
+	"strings"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"k8s.io/klog/v2"
-	"strings"
 )
 
 func ListDatabases(client *mongo.Client) []string {
