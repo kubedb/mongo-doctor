@@ -27,7 +27,7 @@ import (
 	"kmodules.xyz/client-go/apiextensions"
 )
 
-func (_ EtcdOpsRequest) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
+func (EtcdOpsRequest) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
 	return crds.MustCustomResourceDefinition(SchemeGroupVersion.WithResource(ResourcePluralEtcdOpsRequest))
 }
 
@@ -67,8 +67,8 @@ func (e *EtcdOpsRequest) GetDBRefName() string {
 	return e.Spec.DatabaseRef.Name
 }
 
-func (e *EtcdOpsRequest) GetRequestType() any {
-	return e.Spec.Type
+func (e *EtcdOpsRequest) GetRequestType() string {
+	return string(e.Spec.Type)
 }
 
 func (e *EtcdOpsRequest) GetStatus() OpsRequestStatus {

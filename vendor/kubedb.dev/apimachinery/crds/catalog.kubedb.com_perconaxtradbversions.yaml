@@ -9,7 +9,7 @@ spec:
   group: catalog.kubedb.com
   names:
     categories:
-    - datastore
+    - catalog
     - kubedb
     - appscode
     kind: PerconaXtraDBVersion
@@ -60,6 +60,8 @@ spec:
                 - image
                 type: object
               deprecated:
+                type: boolean
+              endOfLife:
                 type: boolean
               exporter:
                 properties:
@@ -142,6 +144,21 @@ spec:
                     - restoreTask
                     type: object
                 type: object
+              ui:
+                items:
+                  properties:
+                    disable:
+                      type: boolean
+                    name:
+                      type: string
+                    values:
+                      x-kubernetes-preserve-unknown-fields: true
+                    version:
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
               updateConstraints:
                 properties:
                   allowlist:

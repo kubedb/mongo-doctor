@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"kmodules.xyz/client-go/tools/portforward"
-	kubedb "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	kubedb "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	"log"
 )

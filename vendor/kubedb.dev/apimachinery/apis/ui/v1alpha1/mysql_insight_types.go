@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -48,13 +48,15 @@ type MySQLInsightSpec struct {
 
 // MySQLInsight is the Schema for the mysqlinsights API
 
+// +genclient
+// +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type MySQLInsight struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MySQLInsightSpec `json:"spec,omitempty"`
-	Status api.MySQLStatus  `json:"status,omitempty"`
+	Spec   MySQLInsightSpec  `json:"spec,omitempty"`
+	Status dbapi.MySQLStatus `json:"status,omitempty"`
 }
 
 // MySQLInsightList contains a list of MySQLInsight
@@ -64,8 +66,4 @@ type MySQLInsightList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []MySQLInsight `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&MySQLInsight{}, &MySQLInsightList{})
 }

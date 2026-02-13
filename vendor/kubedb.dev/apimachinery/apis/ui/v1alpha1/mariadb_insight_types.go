@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -46,15 +46,17 @@ type MariaDBInsightSpec struct {
 	ThreadsRunning                *int32   `json:"threadsRunning,omitempty"`
 }
 
-// MariaDBInsight is the Schema for the mariaDBinsights API
+// MariaDBInsight is the Schema for the MariaDBInsights API
 
+// +genclient
+// +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type MariaDBInsight struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MariaDBInsightSpec `json:"spec,omitempty"`
-	Status api.MariaDBStatus  `json:"status,omitempty"`
+	Spec   MariaDBInsightSpec  `json:"spec,omitempty"`
+	Status dbapi.MariaDBStatus `json:"status,omitempty"`
 }
 
 // MariaDBInsightList contains a list of MariaDBInsight
@@ -64,8 +66,4 @@ type MariaDBInsightList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []MariaDBInsight `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&MariaDBInsight{}, &MariaDBInsightList{})
 }

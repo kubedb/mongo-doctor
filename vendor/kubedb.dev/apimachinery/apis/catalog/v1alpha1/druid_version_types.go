@@ -34,7 +34,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=druidversions,singular=druidversion,scope=Cluster,shortName=drversion,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=druidversions,singular=druidversion,scope=Cluster,shortName=drversion,categories={catalog,kubedb,appscode}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="DB_IMAGE",type="string",JSONPath=".spec.db.image"
 // +kubebuilder:printcolumn:name="Deprecated",type="boolean",JSONPath=".spec.deprecated"
@@ -49,6 +49,11 @@ type DruidVersion struct {
 type DruidVersionSpec struct {
 	// Version
 	Version string `json:"version"`
+
+	// EndOfLife refers if this version reached into its end of the life or not, based on https://endoflife.date/
+	// +optional
+	EndOfLife bool `json:"endOfLife"`
+
 	// Database Image
 	DB DruidVersionDatabase `json:"db"`
 	// Init Container Image
@@ -59,6 +64,10 @@ type DruidVersionSpec struct {
 	// SecurityContext is for the additional security information for the Druid container
 	// +optional
 	SecurityContext SecurityContext `json:"securityContext"`
+	// +optional
+	UI []ChartInfo `json:"ui,omitempty"`
+	// update constraints
+	UpdateConstraints UpdateConstraints `json:"updateConstraints,omitempty"`
 }
 
 // DruidVersionDatabase is the Druid Database image

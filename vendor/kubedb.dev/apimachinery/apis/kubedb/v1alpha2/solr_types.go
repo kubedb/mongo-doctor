@@ -24,6 +24,13 @@ import (
 	ofst "kmodules.xyz/offshoot-api/api/v2"
 )
 
+const (
+	ResourceCodeSolr     = "sl"
+	ResourceKindSolr     = "Solr"
+	ResourceSingularSolr = "solr"
+	ResourcePluralSolr   = "solrs"
+)
+
 // Solr is the schema for the Sole API
 
 // +genclient
@@ -32,8 +39,7 @@ import (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=sl,scope=Namespaced
-// +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".apiVersion"
+// +kubebuilder:resource:path=solrs,singular=solr,shortName=sl,categories={datastore,kubedb,appscode,all}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -45,13 +51,11 @@ type Solr struct {
 	Status SolrStatus `json:"status,omitempty"`
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // SolrSpec defines the desired state of Solr c
 type SolrSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// AutoOps contains configuration of automatic ops-request-recommendation generation
+	// +optional
+	AutoOps AutoOpsSpec `json:"autoOps,omitempty"`
 
 	// Version of Solr to be deployed
 	Version string `json:"version"`
@@ -71,7 +75,7 @@ type SolrSpec struct {
 	Storage *core.PersistentVolumeClaimSpec `json:"storage,omitempty"`
 
 	// 	// ZooKeeper contains information for Solr to store configurations for collections
-	ZookeeperRef *kmapi.ObjectReference `json:"zookeeperRef,omitempty"`
+	ZookeeperRef *ZookeeperRef `json:"zookeeperRef,omitempty"`
 
 	// +optional
 	SolrModules []string `json:"solrModules,omitempty"`
@@ -81,6 +85,9 @@ type SolrSpec struct {
 
 	// To enable ssl for http layer
 	EnableSSL bool `json:"enableSSL,omitempty"`
+
+	// Client auth need or want
+	ClientAuthSSL string `json:"clientAuthSSL,omitempty"`
 
 	// TLS contains tls configurations for client and server.
 	// +optional
@@ -92,10 +99,13 @@ type SolrSpec struct {
 	DisableSecurity bool `json:"disableSecurity,omitempty"`
 
 	// +optional
-	ConfigSecret *core.LocalObjectReference `json:"configSecret,omitempty"`
+	Configuration *ConfigurationSpec `json:"configuration,omitempty"`
 
 	// +optional
-	AuthSecret *core.LocalObjectReference `json:"authSecret,omitempty"`
+	KeystoreSecret *core.LocalObjectReference `json:"keystoreSecret,omitempty"`
+
+	// +optional
+	AuthSecret *SecretReference `json:"authSecret,omitempty"`
 
 	// +optional
 	ZookeeperDigestSecret *core.LocalObjectReference `json:"zookeeperDigestSecret,omitempty"`
@@ -114,9 +124,9 @@ type SolrSpec struct {
 	// +optional
 	ServiceTemplates []NamedServiceTemplateSpec `json:"serviceTemplates,omitempty"`
 
-	// TerminationPolicy controls the delete operation for database
+	// DeletionPolicy controls the delete operation for database
 	// +optional
-	TerminationPolicy TerminationPolicy `json:"terminationPolicy,omitempty"`
+	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`
 
 	// HealthChecker defines attributes of the health checker
 	// +optional
@@ -126,11 +136,6 @@ type SolrSpec struct {
 	// Monitor is used monitor database instance
 	// +optional
 	Monitor *mona.AgentSpec `json:"monitor,omitempty"`
-
-	// PodPlacementPolicy is the reference of the podPlacementPolicy
-	// +kubebuilder:default={name: "default"}
-	// +optional
-	PodPlacementPolicy *core.LocalObjectReference `json:"podPlacementPolicy,omitempty"`
 }
 
 type SolrClusterTopology struct {
@@ -155,28 +160,10 @@ type SolrNode struct {
 	// PodTemplate is an optional configuration for pods used to expose database
 	// +optional
 	PodTemplate ofst.PodTemplateSpec `json:"podTemplate,omitempty"`
-
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	// +mapType=atomic
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// If specified, the pod's tolerations.
-	// +optional
-	Tolerations []core.Toleration `json:"tolerations,omitempty"`
-
-	// PodPlacementPolicy is the reference of the podPlacementPolicy
-	// +kubebuilder:default={name: "default"}
-	// +optional
-	PodPlacementPolicy *core.LocalObjectReference `json:"podPlacementPolicy,omitempty"`
 }
 
 // SolrStatus defines the observed state of Solr
 type SolrStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Specifies the current phase of the database
 	// +optional
 	Phase DatabasePhase `json:"phase,omitempty"`
@@ -187,8 +174,6 @@ type SolrStatus struct {
 	// Conditions applied to the database, such as approval or denial.
 	// +optional
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
-	// +optional
-	Gateway *Gateway `json:"gateway,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=overseer;data;coordinator;combined
@@ -198,7 +183,19 @@ const (
 	SolrNodeRoleOverseer    SolrNodeRoleType = "overseer"
 	SolrNodeRoleData        SolrNodeRoleType = "data"
 	SolrNodeRoleCoordinator SolrNodeRoleType = "coordinator"
+	SolrNodeRoleCombined    SolrNodeRoleType = "combined"
 	SolrNodeRoleSet                          = "set"
+)
+
+// +kubebuilder:validation:Enum=ca;transport;http;client;server
+type SolrCertificateAlias string
+
+const (
+	SolrCACert        SolrCertificateAlias = "ca"
+	SolrTransportCert SolrCertificateAlias = "transport"
+	SolrHTTPCert      SolrCertificateAlias = "http"
+	SolrClientCert    SolrCertificateAlias = "client"
+	SolrServerCert    SolrCertificateAlias = "server"
 )
 
 //+kubebuilder:object:root=true
@@ -209,4 +206,22 @@ type SolrList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Solr `json:"items"`
+}
+
+var _ Accessor = &Solr{}
+
+func (m *Solr) GetObjectMeta() metav1.ObjectMeta {
+	return m.ObjectMeta
+}
+
+func (m *Solr) GetConditions() []kmapi.Condition {
+	return m.Status.Conditions
+}
+
+func (m *Solr) SetCondition(cond kmapi.Condition) {
+	m.Status.Conditions = setCondition(m.Status.Conditions, cond)
+}
+
+func (m *Solr) RemoveCondition(typ string) {
+	m.Status.Conditions = removeCondition(m.Status.Conditions, typ)
 }

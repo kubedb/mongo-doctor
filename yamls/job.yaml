@@ -21,7 +21,7 @@ spec:
           requests:
             cpu: 1
             memory: 1Gi
-        image: ghcr.io/arnobkumarsaha/mongo-doctor
+        image: ghcr.io/arnobkumarsaha/mongo-doctor:v0.1.0_linux_amd64 # ghcr.io/kubedb/mongo-doctor:v0.1.0
         imagePullPolicy: Always
       serviceAccountName: mongo-doctor
       restartPolicy: Never

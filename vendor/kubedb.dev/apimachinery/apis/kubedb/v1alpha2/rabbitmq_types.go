@@ -39,8 +39,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=rm,scope=Namespaced
-// +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".apiVersion"
+// +kubebuilder:resource:path=rabbitmqs,singular=rabbitmq,shortName=rm,categories={datastore,kubedb,appscode,all}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -52,13 +51,11 @@ type RabbitMQ struct {
 	Status RabbitMQStatus `json:"status,omitempty"`
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // RabbitMQSpec defines the desired state of RabbitMQ
 type RabbitMQSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// AutoOps contains configuration of automatic ops-request-recommendation generation
+	// +optional
+	AutoOps AutoOpsSpec `json:"autoOps,omitempty"`
 
 	// Version of RabbitMQ to be deployed.
 	Version string `json:"version"`
@@ -90,6 +87,9 @@ type RabbitMQSpec struct {
 	// +optional
 	ConfigSecret *core.LocalObjectReference `json:"configSecret,omitempty"`
 
+	// +optional
+	Configuration *ConfigurationSpec `json:"configuration,omitempty"`
+
 	// TLS contains tls configurations
 	// +optional
 	TLS *kmapi.TLSConfig `json:"tls,omitempty"`
@@ -106,32 +106,29 @@ type RabbitMQSpec struct {
 	// +optional
 	Halted bool `json:"halted,omitempty"`
 
+	// Indicates that the RabbitMQ Protocols that are required to be disabled on bootstrap.
+	// +optional
+	DisabledProtocols []RabbitMQProtocol `json:"disabledProtocols,omitempty"`
+
 	// Monitor is used monitor database instance
 	// +optional
 	Monitor *mona.AgentSpec `json:"monitor,omitempty"`
 
-	// TerminationPolicy controls the delete operation for database
+	// DeletionPolicy controls the delete operation for database
 	// +optional
-	TerminationPolicy TerminationPolicy `json:"terminationPolicy,omitempty"`
+	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`
 
 	// HealthChecker defines attributes of the health checker
 	// +optional
-	// +kubebuilder:default={periodSeconds: 20, timeoutSeconds: 10, failureThreshold: 3}
+	// +kubebuilder:default={periodSeconds: 10, timeoutSeconds: 10, failureThreshold: 3}
 	HealthChecker kmapi.HealthCheckSpec `json:"healthChecker"`
-
-	// PodPlacementPolicy is the reference of the podPlacementPolicy
-	// +kubebuilder:default={name: "default"}
-	// +optional
-	PodPlacementPolicy *core.LocalObjectReference `json:"podPlacementPolicy,omitempty"`
 }
 
 // RabbitMQStatus defines the observed state of RabbitMQ
 type RabbitMQStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	// Specifies the current phase of the database
 	// +optional
-	Phase RabbitMQPhase `json:"phase,omitempty"`
+	Phase DatabasePhase `json:"phase,omitempty"`
 	// observedGeneration is the most recent generation observed for this resource. It corresponds to the
 	// resource's generation, which is updated on mutation by the API Server.
 	// +optional
@@ -139,19 +136,7 @@ type RabbitMQStatus struct {
 	// Conditions applied to the database, such as approval or denial.
 	// +optional
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
-	// +optional
-	Gateway *Gateway `json:"gateway,omitempty"`
 }
-
-// +kubebuilder:validation:Enum=Provisioning;Ready;NotReady;Critical
-type RabbitMQPhase string
-
-const (
-	RabbitmqProvisioning RabbitMQPhase = "Provisioning"
-	RabbitmqReady        RabbitMQPhase = "Ready"
-	RabbitmqNotReady     RabbitMQPhase = "NotReady"
-	RabbitmqCritical     RabbitMQPhase = "Critical"
-)
 
 // +kubebuilder:validation:Enum=ca;client;server
 type RabbitMQCertificateAlias string
@@ -162,6 +147,18 @@ const (
 	RabbitmqServerCert RabbitMQCertificateAlias = "server"
 )
 
+// +kubebuilder:validation:Enum=http;amqp;mqtt;stomp;web_mqtt;web_stomp
+type RabbitMQProtocol string
+
+const (
+	RabbitmqProtocolHTTP     RabbitMQProtocol = "http"
+	RabbitmqProtocolAMQP     RabbitMQProtocol = "amqp"
+	RabbitmqProtocolMQTT     RabbitMQProtocol = "mqtt"
+	RabbitmqProtocolSTOMP    RabbitMQProtocol = "stomp"
+	RabbitmqProtocolWEBMQTT  RabbitMQProtocol = "web_mqtt"
+	RabbitmqProtocolWEBSTOMP RabbitMQProtocol = "web_stomp"
+)
+
 // RabbitMQList contains a list of RabbitMQ
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -169,4 +166,22 @@ type RabbitMQList struct {
 	meta.TypeMeta `json:",inline"`
 	meta.ListMeta `json:"metadata,omitempty"`
 	Items         []RabbitMQ `json:"items"`
+}
+
+var _ Accessor = &RabbitMQ{}
+
+func (m *RabbitMQ) GetObjectMeta() meta.ObjectMeta {
+	return m.ObjectMeta
+}
+
+func (m *RabbitMQ) GetConditions() []kmapi.Condition {
+	return m.Status.Conditions
+}
+
+func (m *RabbitMQ) SetCondition(cond kmapi.Condition) {
+	m.Status.Conditions = setCondition(m.Status.Conditions, cond)
+}
+
+func (m *RabbitMQ) RemoveCondition(typ string) {
+	m.Status.Conditions = removeCondition(m.Status.Conditions, typ)
 }

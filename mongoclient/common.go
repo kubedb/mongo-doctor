@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
-	kubedb "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	kubedb "kubedb.dev/apimachinery/apis/kubedb/v1"
 	"kubedb.dev/mongo-doctor/k8s"
 )
 

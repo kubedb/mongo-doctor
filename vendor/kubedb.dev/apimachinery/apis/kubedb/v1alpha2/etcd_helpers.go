@@ -34,7 +34,7 @@ import (
 	mona "kmodules.xyz/monitoring-agent-api/api/v1"
 )
 
-func (_ Etcd) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
+func (Etcd) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
 	return crds.MustCustomResourceDefinition(SchemeGroupVersion.WithResource(ResourcePluralEtcd))
 }
 
@@ -74,7 +74,7 @@ func (e Etcd) ServiceLabels(alias ServiceAlias, extraLabels ...map[string]string
 }
 
 func (e Etcd) offshootLabels(selector, override map[string]string) map[string]string {
-	selector[meta_util.ComponentLabelKey] = ComponentDatabase
+	selector[meta_util.ComponentLabelKey] = kubedb.ComponentDatabase
 	return meta_util.FilterKeys(kubedb.GroupName, selector, meta_util.OverwriteKeys(nil, e.Labels, override))
 }
 
@@ -154,7 +154,8 @@ func (e etcdStatsService) Path() string {
 }
 
 func (e etcdStatsService) Scheme() string {
-	return ""
+	sc := promapi.SchemeHTTP
+	return sc.String()
 }
 
 func (e etcdStatsService) TLSConfig() *promapi.TLSConfig {
@@ -166,7 +167,7 @@ func (e Etcd) StatsService() mona.StatsAccessor {
 }
 
 func (e Etcd) StatsServiceLabels() map[string]string {
-	return e.ServiceLabels(StatsServiceAlias, map[string]string{LabelRole: RoleStats})
+	return e.ServiceLabels(StatsServiceAlias, map[string]string{kubedb.LabelRole: kubedb.RoleStats})
 }
 
 func (e *Etcd) SetDefaults() {
@@ -181,12 +182,12 @@ func (e *Etcd) SetDefaults() {
 	if e.Spec.StorageType == "" {
 		e.Spec.StorageType = StorageTypeDurable
 	}
-	if e.Spec.TerminationPolicy == "" {
-		e.Spec.TerminationPolicy = TerminationPolicyDelete
+	if e.Spec.DeletionPolicy == "" {
+		e.Spec.DeletionPolicy = DeletionPolicyDelete
 	}
 
 	e.Spec.Monitor.SetDefaults()
-	apis.SetDefaultResourceLimits(&e.Spec.PodTemplate.Spec.Resources, DefaultResources)
+	apis.SetDefaultResourceLimits(&e.Spec.PodTemplate.Spec.Resources, kubedb.DefaultResources)
 }
 
 func (e *EtcdSpec) GetPersistentSecrets() []string {

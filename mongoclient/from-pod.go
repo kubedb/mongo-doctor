@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"k8s.io/klog/v2"
-	kubedb "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	kubedb "kubedb.dev/apimachinery/apis/kubedb/v1"
 	"kubedb.dev/mongo-doctor/k8s"
 )
 

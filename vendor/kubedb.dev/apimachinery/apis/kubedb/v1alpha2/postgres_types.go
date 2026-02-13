@@ -131,7 +131,7 @@ type PostgresSpec struct {
 
 	// TerminationPolicy controls the delete operation for database
 	// +optional
-	TerminationPolicy TerminationPolicy `json:"terminationPolicy,omitempty"`
+	TerminationPolicy DeletionPolicy `json:"terminationPolicy,omitempty"`
 
 	// Coordinator defines attributes of the coordinator container
 	// +optional
@@ -186,21 +186,13 @@ type PostgresReplication struct {
 	WalKeepSegment *int32 `json:"walKeepSegment,omitempty"`
 	// +optional
 	MaxSlotWALKeepSizeInMegaBytes *int32 `json:"maxSlotWALKeepSize,omitempty"`
-}
 
-type ArbiterSpec struct {
-	// Compute Resources required by the sidecar container.
+	// ForceFailoverAcceptingDataLossAfter is the maximum time to wait before running a force failover process
+	// This is helpful for a scenario where the old primary is not available and it has the most updated wal lsn
+	// Doing force failover may or may not end up loosing data depending on any wrtie transaction
+	// in the range lagged lsn between the new primary and the old primary
 	// +optional
-	Resources core.ResourceRequirements `json:"resources,omitempty"`
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	// +mapType=atomic
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// If specified, the pod's tolerations.
-	// +optional
-	Tolerations []core.Toleration `json:"tolerations,omitempty"`
+	ForceFailoverAcceptingDataLossAfter *metav1.Duration `json:"forceFailoverAcceptingDataLossAfter,omitempty"`
 }
 
 // PostgreLeaderElectionConfig contains essential attributes of leader election.
@@ -289,8 +281,6 @@ type PostgresStatus struct {
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
 	// +optional
 	AuthSecret *Age `json:"authSecret,omitempty"`
-	// +optional
-	Gateway *Gateway `json:"gateway,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

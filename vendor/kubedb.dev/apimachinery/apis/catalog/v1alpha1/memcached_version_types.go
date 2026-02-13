@@ -34,7 +34,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=memcachedversions,singular=memcachedversion,scope=Cluster,shortName=mcversion,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=memcachedversions,singular=memcachedversion,scope=Cluster,shortName=mcversion,categories={catalog,kubedb,appscode}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="DB_IMAGE",type="string",JSONPath=".spec.db.image"
 // +kubebuilder:printcolumn:name="Deprecated",type="boolean",JSONPath=".spec.deprecated"
@@ -49,6 +49,11 @@ type MemcachedVersion struct {
 type MemcachedVersionSpec struct {
 	// Version
 	Version string `json:"version"`
+
+	// EndOfLife refers if this version reached into its end of the life or not, based on https://endoflife.date/
+	// +optional
+	EndOfLife bool `json:"endOfLife"`
+
 	// Database Image
 	DB MemcachedVersionDatabase `json:"db"`
 	// Exporter Image
@@ -58,9 +63,13 @@ type MemcachedVersionSpec struct {
 	Deprecated bool `json:"deprecated,omitempty"`
 	// PSP names
 	PodSecurityPolicies MemcachedVersionPodSecurityPolicy `json:"podSecurityPolicies"`
+	// update constraints
+	UpdateConstraints UpdateConstraints `json:"updateConstraints,omitempty"`
 	// SecurityContext is for the additional config for the DB container
 	// +optional
 	SecurityContext SecurityContext `json:"securityContext"`
+	// +optional
+	UI []ChartInfo `json:"ui,omitempty"`
 }
 
 // MemcachedVersionDatabase is the Memcached Database image

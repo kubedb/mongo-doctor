@@ -35,7 +35,7 @@ import (
 	mona "kmodules.xyz/monitoring-agent-api/api/v1"
 )
 
-func (_ ProxySQL) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
+func (ProxySQL) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
 	return crds.MustCustomResourceDefinition(SchemeGroupVersion.WithResource(ResourcePluralProxySQL))
 }
 
@@ -75,7 +75,7 @@ func (p ProxySQL) ServiceLabels(alias ServiceAlias, extraLabels ...map[string]st
 }
 
 func (p ProxySQL) offshootLabels(selector, override map[string]string) map[string]string {
-	selector[meta_util.ComponentLabelKey] = ComponentDatabase
+	selector[meta_util.ComponentLabelKey] = kubedb.ComponentDatabase
 	return meta_util.FilterKeys(kubedb.GroupName, selector, meta_util.OverwriteKeys(nil, p.Labels, override))
 }
 
@@ -151,11 +151,12 @@ func (p proxysqlStatsService) ServiceMonitorAdditionalLabels() map[string]string
 }
 
 func (p proxysqlStatsService) Path() string {
-	return DefaultStatsPath
+	return kubedb.DefaultStatsPath
 }
 
 func (p proxysqlStatsService) Scheme() string {
-	return ""
+	sc := promapi.SchemeHTTP
+	return sc.String()
 }
 
 func (p proxysqlStatsService) TLSConfig() *promapi.TLSConfig {
@@ -167,7 +168,7 @@ func (p ProxySQL) StatsService() mona.StatsAccessor {
 }
 
 func (p ProxySQL) StatsServiceLabels() map[string]string {
-	return p.ServiceLabels(StatsServiceAlias, map[string]string{LabelRole: RoleStats})
+	return p.ServiceLabels(StatsServiceAlias, map[string]string{kubedb.LabelRole: kubedb.RoleStats})
 }
 
 func (p *ProxySQL) SetDefaults(usesAcme bool) {
@@ -186,7 +187,7 @@ func (p *ProxySQL) SetDefaults(usesAcme bool) {
 	p.Spec.Monitor.SetDefaults()
 	p.SetTLSDefaults(usesAcme)
 	p.SetHealthCheckerDefaults()
-	apis.SetDefaultResourceLimits(&p.Spec.PodTemplate.Spec.Resources, DefaultResources)
+	apis.SetDefaultResourceLimits(&p.Spec.PodTemplate.Spec.Resources, kubedb.DefaultResources)
 }
 
 func (p *ProxySQL) SetHealthCheckerDefaults() {

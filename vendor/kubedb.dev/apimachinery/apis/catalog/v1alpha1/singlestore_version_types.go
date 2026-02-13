@@ -35,7 +35,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=singlestoreversions,singular=singlestoreversion,scope=Cluster,shortName=sdbv,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=singlestoreversions,singular=singlestoreversion,scope=Cluster,shortName=sdbv,categories={catalog,kubedb,appscode}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="DB_IMAGE",type="string",JSONPath=".spec.db.image"
 // +kubebuilder:printcolumn:name="Deprecated",type="boolean",JSONPath=".spec.deprecated"
@@ -50,6 +50,11 @@ type SinglestoreVersion struct {
 type SinglestoreVersionSpec struct {
 	// Version
 	Version string `json:"version"`
+
+	// EndOfLife refers if this version reached into its end of the life or not, based on https://endoflife.date/
+	// +optional
+	EndOfLife bool `json:"endOfLife"`
+
 	// Database Image
 	DB SinglestoreVersionDatabase `json:"db"`
 	// +optional

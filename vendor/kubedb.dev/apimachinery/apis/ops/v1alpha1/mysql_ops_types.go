@@ -18,9 +18,12 @@ limitations under the License.
 package v1alpha1
 
 import (
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
+
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kmapi "kmodules.xyz/client-go/api/v1"
 )
 
 const (
@@ -37,7 +40,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=mysqlopsrequests,singular=mysqlopsrequest,shortName=myops,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=mysqlopsrequests,singular=mysqlopsrequest,shortName=myops,categories={ops,kubedb,appscode}
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
@@ -64,20 +67,28 @@ type MySQLOpsRequestSpec struct {
 	// Specifies information necessary for volume expansion
 	VolumeExpansion *MySQLVolumeExpansionSpec `json:"volumeExpansion,omitempty"`
 	// Specifies information necessary for custom configuration of MySQL
-	Configuration *MySQLCustomConfigurationSpec `json:"configuration,omitempty"`
+	Configuration *ReconfigurationSpec `json:"configuration,omitempty"`
 	// Specifies information necessary for configuring TLS
 	TLS *MySQLTLSSpec `json:"tls,omitempty"`
+	// Specifies information necessary for configuring authSecret of the database
+	Authentication *AuthSpec `json:"authentication,omitempty"`
+	// Specifies information transform Remote Replica to GroupReplication
+	ReplicationModeTransformation *MySQLReplicationModeTransformSpec `json:"replicationModeTransformation,omitempty"`
 	// Specifies information necessary for restarting database
 	Restart *RestartSpec `json:"restart,omitempty"`
+	// Specifies information necessary for migrating storageClass or data
+	Migration *MySQLMigrationSpec `json:"migration,omitempty"`
 	// Timeout for each step of the ops request in second. If a step doesn't finish within the specified timeout, the ops request will result in failure.
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// ApplyOption is to control the execution of OpsRequest depending on the database state.
 	// +kubebuilder:default="IfReady"
 	Apply ApplyOption `json:"apply,omitempty"`
+	// +kubebuilder:default=1
+	MaxRetries int32 `json:"maxRetries,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=Upgrade;UpdateVersion;HorizontalScaling;VerticalScaling;VolumeExpansion;Restart;Reconfigure;ReconfigureTLS
-// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, VolumeExpansion, Restart, Reconfigure, ReconfigureTLS)
+// +kubebuilder:validation:Enum=Upgrade;UpdateVersion;HorizontalScaling;VerticalScaling;VolumeExpansion;Restart;Reconfigure;ReconfigureTLS;RotateAuth;ReplicationModeTransformation;StorageMigration
+// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, VolumeExpansion, Restart, Reconfigure, ReconfigureTLS, RotateAuth, ReplicationModeTransformation, StorageMigration)
 type MySQLOpsRequestType string
 
 // MySQLReplicaReadinessCriteria is the criteria for checking readiness of a MySQL pod
@@ -95,6 +106,25 @@ type MySQLHorizontalScalingSpec struct {
 	Member *int32 `json:"member,omitempty"`
 }
 
+type MySQLMigrationSpec struct {
+	StorageClassName   *string                            `json:"storageClassName"`
+	OldPVReclaimPolicy core.PersistentVolumeReclaimPolicy `json:"oldPVReclaimPolicy,omitempty"`
+}
+
+type MySQLReplicationModeTransformSpec struct {
+	// Group Replication can be deployed in either "Single-Primary" or "Multi-Primary" mode
+	// +kubebuilder:default=Single-Primary
+	Mode *dbapi.MySQLGroupMode `json:"mode"`
+
+	// TLSConfig contains updated tls configurations for client and server.
+	// +optional
+	kmapi.TLSConfig `json:",inline,omitempty"`
+
+	// Indicates that the database server need to be encrypted connections(ssl)
+	// +optional
+	RequireSSL *bool `json:"requireSSL,omitempty"`
+}
+
 type MySQLVerticalScalingSpec struct {
 	MySQL       *PodResources       `json:"mysql,omitempty"`
 	Exporter    *ContainerResources `json:"exporter,omitempty"`
@@ -105,12 +135,6 @@ type MySQLVerticalScalingSpec struct {
 type MySQLVolumeExpansionSpec struct {
 	MySQL *resource.Quantity  `json:"mysql,omitempty"`
 	Mode  VolumeExpansionMode `json:"mode"`
-}
-
-type MySQLCustomConfigurationSpec struct {
-	ConfigSecret       *core.LocalObjectReference `json:"configSecret,omitempty"`
-	InlineConfig       string                     `json:"inlineConfig,omitempty"`
-	RemoveCustomConfig bool                       `json:"removeCustomConfig,omitempty"`
 }
 
 type MySQLTLSSpec struct {

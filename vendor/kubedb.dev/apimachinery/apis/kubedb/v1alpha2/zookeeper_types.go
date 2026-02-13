@@ -39,8 +39,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=zk,scope=Namespaced
-// +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".apiVersion"
+// +kubebuilder:resource:path=zookeepers,singular=zookeeper,shortName=zk,categories={datastore,kubedb,appscode,all}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -54,6 +53,10 @@ type ZooKeeper struct {
 
 // ZooKeeperSpec defines the desired state of ZooKeeper
 type ZooKeeperSpec struct {
+	// AutoOps contains configuration of automatic ops-request-recommendation generation
+	// +optional
+	AutoOps AutoOpsSpec `json:"autoOps,omitempty"`
+
 	// ZooKeeper Version to be deployed
 	Version string `json:"version"`
 
@@ -61,11 +64,19 @@ type ZooKeeperSpec struct {
 	// +optional
 	Replicas *int32 `json:"replicas"`
 
+	// +optional
 	// +kubebuilder:default=8080
 	AdminServerPort int32 `json:"adminServerPort"`
 
+	// +optional
+	// +kubebuilder:default=2182
+	ClientSecurePort int32 `json:"clientSecurePort"`
+
 	// Storage to specify how storage shall be used.
 	Storage *core.PersistentVolumeClaimSpec `json:"storage,omitempty"`
+
+	// To enable ssl for http layer
+	EnableSSL bool `json:"enableSSL,omitempty"`
 
 	// If disable Auth true then don't create any auth secret
 	// +optional
@@ -75,10 +86,19 @@ type ZooKeeperSpec struct {
 	// +optional
 	AuthSecret *SecretReference `json:"authSecret,omitempty"`
 
-	// ConfigSecret is an optional field to provide custom configuration file for database (i.e config.properties).
+	// Configuration is an optional field to provide custom configuration file for database (i.e config.properties).
 	// If specified, this file will be used as configuration file otherwise default configuration file will be used.
+	// You can provide custom configurations using SecretName or ApplyConfig.
 	// +optional
-	ConfigSecret *core.LocalObjectReference `json:"configSecret,omitempty"`
+	Configuration *ConfigurationSpec `json:"configuration,omitempty"`
+
+	// Keystore encryption secret
+	// +optional
+	KeystoreCredSecret *SecretReference `json:"keystoreCredSecret,omitempty"`
+
+	// TLS contains tls configurations
+	// +optional
+	TLS *kmapi.TLSConfig `json:"tls,omitempty"`
 
 	// PodTemplate is an optional configuration for pods used to expose database
 	// +optional
@@ -88,9 +108,9 @@ type ZooKeeperSpec struct {
 	// +optional
 	ServiceTemplates []NamedServiceTemplateSpec `json:"serviceTemplates,omitempty"`
 
-	// TerminationPolicy controls the delete operation for database
+	// DeletionPolicy controls the delete operation for database
 	// +optional
-	TerminationPolicy TerminationPolicy `json:"terminationPolicy,omitempty"`
+	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`
 
 	// Indicates that the database is halted and all offshoot Kubernetes resources except PVCs are deleted.
 	// +optional
@@ -104,11 +124,6 @@ type ZooKeeperSpec struct {
 	// Monitor is used monitor database instance
 	// +optional
 	Monitor *mona.AgentSpec `json:"monitor,omitempty"`
-
-	// PodPlacementPolicy is the reference of the podPlacementPolicy
-	// +kubebuilder:default={name: "default"}
-	// +optional
-	PodPlacementPolicy *core.LocalObjectReference `json:"podPlacementPolicy,omitempty"`
 }
 
 // ZooKeeperStatus defines the observed state of ZooKeeper
@@ -123,9 +138,15 @@ type ZooKeeperStatus struct {
 	// Conditions applied to the database, such as approval or denial.
 	// +optional
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
-	// +optional
-	Gateway *Gateway `json:"gateway,omitempty"`
 }
+
+// +kubebuilder:validation:Enum=server;client
+type ZooKeeperCertificateAlias string
+
+const (
+	ZooKeeperServerCert ZooKeeperCertificateAlias = "server"
+	ZooKeeperClientCert ZooKeeperCertificateAlias = "client"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -133,4 +154,31 @@ type ZooKeeperList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ZooKeeper `json:"items"`
+}
+
+// +kubebuilder:validation:Enum=controller;broker;combined
+type ZooKeeperNodeRoleType string
+
+const (
+	ZooKeeperNodeRoleController ZooKeeperNodeRoleType = "controller"
+	ZooKeeperNodeRoleBroker     ZooKeeperNodeRoleType = "broker"
+	ZooKeeperNodeRoleCombined   ZooKeeperNodeRoleType = "combined"
+)
+
+var _ Accessor = &ZooKeeper{}
+
+func (m *ZooKeeper) GetObjectMeta() metav1.ObjectMeta {
+	return m.ObjectMeta
+}
+
+func (m *ZooKeeper) GetConditions() []kmapi.Condition {
+	return m.Status.Conditions
+}
+
+func (m *ZooKeeper) SetCondition(cond kmapi.Condition) {
+	m.Status.Conditions = setCondition(m.Status.Conditions, cond)
+}
+
+func (m *ZooKeeper) RemoveCondition(typ string) {
+	m.Status.Conditions = removeCondition(m.Status.Conditions, typ)
 }
