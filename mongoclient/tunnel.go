@@ -2,26 +2,29 @@ package mongoclient
 
 import (
 	"context"
-	"fmt"
+
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"kmodules.xyz/client-go/tools/portforward"
+	kubedb "kubedb.dev/apimachinery/apis/kubedb/v1"
+
 	"log"
 )
 
-func ConnectToPod(tunnel *portforward.Tunnel, password string) *mongo.Client {
-	url := fmt.Sprintf("mongodb://root:%s@localhost:%v/admin?directConnection=true&serverSelectionTimeoutMS=2000&authSource=admin", password, tunnel.Local)
-	clientOptions := options.Client().ApplyURI(url)
-	secondaryClient, err := mongo.Connect(context.Background(), clientOptions)
+func ConnectToPod(tunnel *portforward.Tunnel, mg *kubedb.MongoDB) *mongo.Client {
+	client, err := mongo.Connect(context.Background(), GetMongoClientOptions(mg, "localhost", tunnel.Local))
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	if err := client.Ping(context.TODO(), readpref.PrimaryPreferred()); err != nil {
+		log.Fatal(err)
+	}
 	klog.Infof("Connected to secondary %v on port %v \n", tunnel.Name, tunnel.Local)
-	return secondaryClient
+	return client
 }
 
 func TunnelToDBService(config *rest.Config, ns, name string) (*portforward.Tunnel, error) {

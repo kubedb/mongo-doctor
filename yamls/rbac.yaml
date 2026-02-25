@@ -5,17 +5,16 @@ metadata:
   namespace: demo
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: mongo-doctor
-  namespace: demo
 rules:
   - apiGroups: ["kubedb.com"]
     resources: ["mongodbs"]
-    verbs: ["get"]
+    verbs: ["get", "list", "watch", "patch", "update"]
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get"]
+    verbs: ["get", "list", "watch", "create"]
   - apiGroups: [""]
     resources: ["pods", "services"]
     verbs: ["*"]
@@ -24,15 +23,15 @@ rules:
     verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: mongo-doctor
-  namespace: demo
 subjects:
   - kind: ServiceAccount
     name: mongo-doctor
+    namespace: demo
     apiGroup: ""
 roleRef:
-  kind: Role
+  kind: ClusterRole
   name: mongo-doctor
   apiGroup: rbac.authorization.k8s.io

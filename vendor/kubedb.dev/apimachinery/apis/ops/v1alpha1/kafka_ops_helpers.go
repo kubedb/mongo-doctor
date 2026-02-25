@@ -27,7 +27,7 @@ import (
 	"kmodules.xyz/client-go/apiextensions"
 )
 
-func (_ *KafkaOpsRequest) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
+func (*KafkaOpsRequest) CustomResourceDefinition() *apiextensions.CustomResourceDefinition {
 	return crds.MustCustomResourceDefinition(SchemeGroupVersion.WithResource(ResourcePluralKafkaOpsRequest))
 }
 
@@ -63,8 +63,8 @@ func (k *KafkaOpsRequest) GetDBRefName() string {
 	return k.Spec.DatabaseRef.Name
 }
 
-func (k *KafkaOpsRequest) GetRequestType() any {
-	return k.Spec.Type
+func (k *KafkaOpsRequest) GetRequestType() string {
+	return string(k.Spec.Type)
 }
 
 func (k *KafkaOpsRequest) GetStatus() OpsRequestStatus {

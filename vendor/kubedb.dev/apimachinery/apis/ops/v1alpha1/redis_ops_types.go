@@ -21,7 +21,6 @@ import (
 	core "k8s.io/api/core/v1"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ofst "kmodules.xyz/offshoot-api/api/v1"
 )
 
 const (
@@ -38,7 +37,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=redisopsrequests,singular=redisopsrequest,shortName=rdops,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=redisopsrequests,singular=redisopsrequest,shortName=rdops,categories={ops,kubedb,appscode}
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
@@ -68,8 +67,14 @@ type RedisOpsRequestSpec struct {
 	Configuration *RedisCustomConfigurationSpec `json:"configuration,omitempty"`
 	// Specifies information necessary for configuring TLS
 	TLS *RedisTLSSpec `json:"tls,omitempty"`
+	// Specifies information necessary for configuring authSecret of the database
+	Authentication *AuthSpec `json:"authentication,omitempty"`
 	// Specifies information necessary for restarting database
 	Restart *RestartSpec `json:"restart,omitempty"`
+	// Announce is used to announce the redis cluster endpoints.
+	// It is used to set
+	// cluster-announce-ip, cluster-announce-port, cluster-announce-bus-port, cluster-announce-tls-port
+	Announce *Announce `json:"announce,omitempty"`
 	// Specifies information necessary for replacing sentinel instances
 	Sentinel *RedisSentinelSpec `json:"sentinel,omitempty"`
 	// Timeout for each step of the ops request in second. If a step doesn't finish within the specified timeout, the ops request will result in failure.
@@ -77,14 +82,16 @@ type RedisOpsRequestSpec struct {
 	// ApplyOption is to control the execution of OpsRequest depending on the database state.
 	// +kubebuilder:default="IfReady"
 	Apply ApplyOption `json:"apply,omitempty"`
+	// +kubebuilder:default=1
+	MaxRetries int32 `json:"maxRetries,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=UpdateVersion;HorizontalScaling;VerticalScaling;VolumeExpansion;Restart;Reconfigure;ReconfigureTLS;ReplaceSentinel
-// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, VolumeExpansion, Restart, Reconfigure, ReconfigureTLS, ReplaceSentinel)
+// +kubebuilder:validation:Enum=UpdateVersion;HorizontalScaling;VerticalScaling;VolumeExpansion;Restart;Reconfigure;ReconfigureTLS;ReplaceSentinel;RotateAuth;Announce
+// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, VolumeExpansion, Restart, Reconfigure, ReconfigureTLS, ReplaceSentinel, RotateAuth, Announce)
 type RedisOpsRequestType string
 
 type RedisTLSSpec struct {
-	*TLSSpec `json:",inline"`
+	TLSSpec `json:",inline"`
 	// This field is only needed in Redis Sentinel Mode when we add or remove TLS. In Redis Sentinel Mode, both redis instances and
 	// sentinel instances either have TLS or don't have TLS. So when want to add TLS to Redis in Sentinel Mode, current sentinel instances don't
 	// have TLS enabled, so we need to give a new Sentinel Reference which has TLS enabled and which will monitor the Redis instances when we
@@ -119,10 +126,16 @@ type RedisUpdateVersionSpec struct {
 }
 
 type RedisHorizontalScalingSpec struct {
-	// Number of Masters in the cluster
-	Master *int32 `json:"master,omitempty"`
-	// specifies the number of replica for the master
+	// Number of shards in the cluster
+	Shards *int32 `json:"shards,omitempty"`
+	// specifies the number of replica of the shards
 	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Announce is used to announce the redis cluster endpoints.
+	// It is used to set
+	// cluster-announce-ip, cluster-announce-port, cluster-announce-bus-port, cluster-announce-tls-port
+	// While scaling up shard or replica just provide the missing announces.
+	Announce *Announce `json:"announce,omitempty"`
 }
 
 // RedisVerticalScalingSpec is the spec for Redis vertical scaling
@@ -132,6 +145,20 @@ type RedisVerticalScalingSpec struct {
 	Coordinator *ContainerResources `json:"coordinator,omitempty"`
 }
 
+type RedisAclSpec struct {
+	// SecretRef holds the password against which ACLs will be created if syncACL is given.
+	// +optional
+	SecretRef *core.LocalObjectReference `json:"secretRef,omitempty"`
+
+	// SyncACL specifies the list of users whose ACLs should be synchronized with the new authentication secret.
+	// If provided, the system will update the ACLs for these users to ensure they are in sync with the new authentication settings.
+	SyncACL []string `json:"syncACL,omitempty"`
+
+	// DeleteUsers specifies the list of users that should be deleted from the database.
+	// If provided, the system will remove these users from the database to enhance security or manage
+	DeleteUsers []string `json:"deleteUsers,omitempty"`
+}
+
 // RedisVolumeExpansionSpec is the spec for Redis volume expansion
 type RedisVolumeExpansionSpec struct {
 	Mode  VolumeExpansionMode `json:"mode"`
@@ -139,12 +166,31 @@ type RedisVolumeExpansionSpec struct {
 }
 
 type RedisCustomConfigurationSpec struct {
-	// PodTemplate is an optional configuration for pods used to expose database
-	// +optional
-	PodTemplate        ofst.PodTemplateSpec       `json:"podTemplate,omitempty"`
-	ConfigSecret       *core.LocalObjectReference `json:"configSecret,omitempty"`
-	InlineConfig       string                     `json:"inlineConfig,omitempty"`
-	RemoveCustomConfig bool                       `json:"removeCustomConfig,omitempty"`
+	ReconfigurationSpec `json:",inline,omitempty"`
+	Auth                *RedisAclSpec `json:"auth,omitempty"`
+}
+
+// +kubebuilder:validation:Enum=ip;hostname
+type PreferredEndpointType string
+
+const (
+	PreferredEndpointTypeIP       PreferredEndpointType = "ip"
+	PreferredEndpointTypeHostname PreferredEndpointType = "hostname"
+)
+
+type Announce struct {
+	// +kubebuilder:default=hostname
+	Type PreferredEndpointType `json:"type,omitempty"`
+	// This field is used to set cluster-announce information for redis cluster of each shard.
+	Shards []Shards `json:"shards,omitempty"`
+}
+
+type Shards struct {
+	// Endpoints contains the cluster-announce information for all the replicas in a shard.
+	// This will be used to set cluster-announce-ip/hostname, cluster-announce-port/cluster-announce-tls-port
+	// and cluster-announce-bus-port
+	// format cluster-announce (host:port@busport)
+	Endpoints []string `json:"endpoints,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

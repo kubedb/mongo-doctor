@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -53,15 +53,17 @@ type ElasticsearchClusterHealth struct {
 	TaskMaxWaitingInQueueMilliSeconds *float64 `json:"taskMaxWaitingInQueueMilliSeconds,omitempty"`
 }
 
-// ElasticsearchInsight is the Schema for the elasticsearchinsights API
+// ElasticsearchInsight is the Schema for the Elasticsearch insight api
 
+// +genclient
+// +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ElasticsearchInsight struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ElasticsearchInsightSpec `json:"spec,omitempty"`
-	Status api.ElasticsearchStatus  `json:"status,omitempty"`
+	Spec   ElasticsearchInsightSpec  `json:"spec,omitempty"`
+	Status dbapi.ElasticsearchStatus `json:"status,omitempty"`
 }
 
 // ElasticsearchInsightList contains a list of ElasticsearchInsight
@@ -71,8 +73,4 @@ type ElasticsearchInsightList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ElasticsearchInsight `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ElasticsearchInsight{}, &ElasticsearchInsightList{})
 }

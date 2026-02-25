@@ -37,7 +37,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=mongodbopsrequests,singular=mongodbopsrequest,shortName=mgops,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=mongodbopsrequests,singular=mongodbopsrequest,shortName=mgops,categories={ops,kubedb,appscode}
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
@@ -64,15 +64,19 @@ type MongoDBOpsRequestSpec struct {
 	// Specifies information necessary for volume expansion
 	VolumeExpansion *MongoDBVolumeExpansionSpec `json:"volumeExpansion,omitempty"`
 	// Specifies information necessary for custom configuration of MongoDB
-	Configuration *MongoDBCustomConfigurationSpec `json:"configuration,omitempty"`
+	Configuration *MongoDBReconfigurationSpec `json:"configuration,omitempty"`
 	// Specifies information necessary for configuring TLS
 	TLS *TLSSpec `json:"tls,omitempty"`
+	// Specifies information necessary for configuring authSecret of the database
+	Authentication *AuthSpec `json:"authentication,omitempty"`
 	// Specifies information necessary for restarting database
 	Restart *RestartSpec `json:"restart,omitempty"`
 	// Specifies information necessary for reprovisioning database
 	Reprovision *Reprovision `json:"reprovision,omitempty"`
 	// Specifies information necessary for setting up Archiver for database
 	Archiver *ArchiverOptions `json:"archiver,omitempty"`
+	// Horizons specifies the information for setting up replicaset horizons.
+	Horizons *Horizons `json:"horizons,omitempty"`
 
 	// Specifies the Readiness Criteria
 	ReadinessCriteria *MongoDBReplicaReadinessCriteria `json:"readinessCriteria,omitempty"`
@@ -81,10 +85,12 @@ type MongoDBOpsRequestSpec struct {
 	// ApplyOption is to control the execution of OpsRequest depending on the database state.
 	// +kubebuilder:default="IfReady"
 	Apply ApplyOption `json:"apply,omitempty"`
+	// +kubebuilder:default=1
+	MaxRetries int32 `json:"maxRetries,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=Upgrade;UpdateVersion;HorizontalScaling;VerticalScaling;VolumeExpansion;Restart;Reconfigure;ReconfigureTLS;Reprovision
-// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, VolumeExpansion, Restart, Reconfigure, ReconfigureTLS, Reprovision)
+// +kubebuilder:validation:Enum=Upgrade;UpdateVersion;HorizontalScaling;VerticalScaling;VolumeExpansion;Restart;Reconfigure;ReconfigureTLS;Reprovision;RotateAuth;Horizons
+// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, VolumeExpansion, Restart, Reconfigure, ReconfigureTLS, Reprovision, RotateAuth, Horizons)
 type MongoDBOpsRequestType string
 
 // MongoDBReplicaReadinessCriteria is the criteria for checking readiness of a MongoDB pod
@@ -154,23 +160,21 @@ type MongoDBVolumeExpansionSpec struct {
 	Hidden       *resource.Quantity  `json:"hidden,omitempty"`
 }
 
-type MongoDBCustomConfigurationSpec struct {
-	Standalone   *MongoDBCustomConfiguration `json:"standalone,omitempty"`
-	ReplicaSet   *MongoDBCustomConfiguration `json:"replicaSet,omitempty"`
-	Mongos       *MongoDBCustomConfiguration `json:"mongos,omitempty"`
-	ConfigServer *MongoDBCustomConfiguration `json:"configServer,omitempty"`
-	Shard        *MongoDBCustomConfiguration `json:"shard,omitempty"`
-	Arbiter      *MongoDBCustomConfiguration `json:"arbiter,omitempty"`
-	Hidden       *MongoDBCustomConfiguration `json:"hidden,omitempty"`
+type MongoDBReconfigurationSpec struct {
+	Standalone   *ReconfigurationSpec `json:"standalone,omitempty"`
+	ReplicaSet   *ReconfigurationSpec `json:"replicaSet,omitempty"`
+	Mongos       *ReconfigurationSpec `json:"mongos,omitempty"`
+	ConfigServer *ReconfigurationSpec `json:"configServer,omitempty"`
+	Shard        *ReconfigurationSpec `json:"shard,omitempty"`
+	Arbiter      *ReconfigurationSpec `json:"arbiter,omitempty"`
+	Hidden       *ReconfigurationSpec `json:"hidden,omitempty"`
 }
 
-type MongoDBCustomConfiguration struct {
-	ConfigSecret *core.LocalObjectReference `json:"configSecret,omitempty"`
-	// Deprecated
-	InlineConfig string `json:"inlineConfig,omitempty"`
-
-	ApplyConfig        map[string]string `json:"applyConfig,omitempty"`
-	RemoveCustomConfig bool              `json:"removeCustomConfig,omitempty"`
+type Horizons struct {
+	DNS string `json:"dns"`
+	// Pods contain the host:port for all the replicas. Its length will be same as db.spec.replicas
+	// +optional
+	Pods []string `json:"pods,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

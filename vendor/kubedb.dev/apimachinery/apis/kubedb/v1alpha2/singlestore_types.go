@@ -39,8 +39,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=sdb,scope=Namespaced
-// +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".apiVersion"
+// +kubebuilder:resource:path=singlestores,singular=singlestore,shortName=sdb,categories={datastore,kubedb,appscode,all}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -54,12 +53,13 @@ type Singlestore struct {
 // SinglestoreSpec defines the desired state of Singlestore
 
 type SinglestoreSpec struct {
+	// AutoOps contains configuration of automatic ops-request-recommendation generation
+	// +optional
+	AutoOps AutoOpsSpec `json:"autoOps,omitempty"`
+
 	// Version of Singlestore to be deployed.
 	// +optional
 	Version string `json:"version"`
-
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
 
 	// Singlestore topology for node specification
 	// +optional
@@ -71,6 +71,12 @@ type SinglestoreSpec struct {
 	// Storage to specify how storage shall be used.
 	Storage *core.PersistentVolumeClaimSpec `json:"storage,omitempty"`
 
+	// Configuration is an optional field to provide custom configuration file for database (i.e config.properties).
+	// If specified, this file will be used as configuration file otherwise default configuration file will be used.
+	// You can provide custom configurations using Secret or ApplyConfig.
+	// +optional
+	Configuration *ConfigurationSpec `json:"configuration,omitempty"`
+
 	// Init is used to initialize database
 	// +optional
 	Init *InitSpec `json:"init,omitempty"`
@@ -81,11 +87,6 @@ type SinglestoreSpec struct {
 	// Database authentication secret
 	// +optional
 	AuthSecret *SecretReference `json:"authSecret,omitempty"`
-
-	// ConfigSecret is an optional field to provide custom configuration file for database (i.e config.properties).
-	// If specified, this file will be used as configuration file otherwise default configuration file will be used.
-	// +optional
-	ConfigSecret *core.LocalObjectReference `json:"configSecret,omitempty"`
 
 	// PodTemplate is an optional configuration for pods used to expose database
 	// +optional
@@ -103,9 +104,9 @@ type SinglestoreSpec struct {
 	// +optional
 	Halted bool `json:"halted,omitempty"`
 
-	// TerminationPolicy controls the delete operation for database
+	// DeletionPolicy controls the delete operation for database
 	// +optional
-	TerminationPolicy TerminationPolicy `json:"terminationPolicy,omitempty"`
+	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`
 
 	// HealthChecker defines attributes of the health checker
 	// +optional
@@ -115,11 +116,6 @@ type SinglestoreSpec struct {
 	// Monitor is used monitor database instance
 	// +optional
 	Monitor *mona.AgentSpec `json:"monitor,omitempty"`
-
-	// PodPlacementPolicy is the reference of the podPlacementPolicy
-	// +kubebuilder:default={name: "default"}
-	// +optional
-	PodPlacementPolicy *core.LocalObjectReference `json:"podPlacementPolicy,omitempty"`
 }
 
 // SinglestoreTopology defines singlestore topology node specs for aggregators and leaves node
@@ -137,6 +133,11 @@ type SinglestoreNode struct {
 	// +optional
 	Suffix string `json:"suffix,omitempty"`
 
+	// Configuration is an optional field to provide custom configuration file for database (i.e config.properties).
+	// If specified, this file will be used as configuration file otherwise default configuration file will be used.
+	// +optional
+	Configuration *ConfigurationSpec `json:"configuration,omitempty"`
+
 	// Storage to specify how storage shall be used.
 	// +optional
 	Storage *core.PersistentVolumeClaimSpec `json:"storage,omitempty"`
@@ -144,11 +145,6 @@ type SinglestoreNode struct {
 	// PodTemplate is an optional configuration for pods used to expose database
 	// +optional
 	PodTemplate *ofst.PodTemplateSpec `json:"podTemplate,omitempty"`
-
-	// PodPlacementPolicy is the reference of the podPlacementPolicy
-	// +kubebuilder:default={name: "default"}
-	// +optional
-	PodPlacementPolicy *core.LocalObjectReference `json:"podPlacementPolicy,omitempty"`
 }
 
 // SinglestoreStatus defines the observed state of Singlestore
@@ -163,8 +159,6 @@ type SinglestoreStatus struct {
 	// Conditions applied to the database, such as approval or denial.
 	// +optional
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
-	// +optional
-	Gateway *Gateway `json:"gateway,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=server;client;metrics-exporter
@@ -182,4 +176,22 @@ type SinglestoreList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Singlestore `json:"items"`
+}
+
+var _ Accessor = &Singlestore{}
+
+func (m *Singlestore) GetObjectMeta() metav1.ObjectMeta {
+	return m.ObjectMeta
+}
+
+func (m *Singlestore) GetConditions() []kmapi.Condition {
+	return m.Status.Conditions
+}
+
+func (m *Singlestore) SetCondition(cond kmapi.Condition) {
+	m.Status.Conditions = setCondition(m.Status.Conditions, cond)
+}
+
+func (m *Singlestore) RemoveCondition(typ string) {
+	m.Status.Conditions = removeCondition(m.Status.Conditions, typ)
 }

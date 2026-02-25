@@ -39,8 +39,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=kf,scope=Namespaced
-// +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".apiVersion"
+// +kubebuilder:resource:path=kafkas,singular=kafka,shortName=kf,categories={datastore,kubedb,appscode,all}
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -54,6 +53,10 @@ type Kafka struct {
 
 // KafkaSpec defines the desired state of Kafka
 type KafkaSpec struct {
+	// AutoOps contains configuration of automatic ops-request-recommendation generation
+	// +optional
+	AutoOps AutoOpsSpec `json:"autoOps,omitempty"`
+
 	// Version of Kafka to be deployed.
 	Version string `json:"version"`
 
@@ -74,6 +77,9 @@ type KafkaSpec struct {
 	// To enable ssl for http layer
 	EnableSSL bool `json:"enableSSL,omitempty"`
 
+	// Broker Rack defines the rack awareness configuration for Kafka brokers
+	BrokerRack *BrokerRack `json:"brokerRack,omitempty"`
+
 	// disable security. It disables authentication security of user.
 	// If unset, default is false
 	// +optional
@@ -92,6 +98,10 @@ type KafkaSpec struct {
 	// +optional
 	KeystoreCredSecret *SecretReference `json:"keystoreCredSecret,omitempty"`
 
+	// Indicates that the database is halted and all offshoot Kubernetes resources except PVCs are deleted.
+	// +optional
+	Halted bool `json:"halted,omitempty"`
+
 	// TLS contains tls configurations
 	// +optional
 	TLS *kmapi.TLSConfig `json:"tls,omitempty"`
@@ -104,13 +114,13 @@ type KafkaSpec struct {
 	// +optional
 	ServiceTemplates []NamedServiceTemplateSpec `json:"serviceTemplates,omitempty"`
 
-	// TerminationPolicy controls the delete operation for database
+	// DeletionPolicy controls the delete operation for database
 	// +optional
-	TerminationPolicy TerminationPolicy `json:"terminationPolicy,omitempty"`
+	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`
 
 	// HealthChecker defines attributes of the health checker
 	// +optional
-	// +kubebuilder:default={periodSeconds: 20, timeoutSeconds: 10, failureThreshold: 3}
+	// +kubebuilder:default={periodSeconds: 10, timeoutSeconds: 10, failureThreshold: 3}
 	HealthChecker kmapi.HealthCheckSpec `json:"healthChecker"`
 
 	// CruiseControl is used to re-balance Kafka cluster
@@ -158,6 +168,11 @@ type KafkaNode struct {
 	Tolerations []core.Toleration `json:"tolerations,omitempty"`
 }
 
+type BrokerRack struct {
+	// TopologyKey is the node label key which is used to identify the rack of a broker
+	TopologyKey string `json:"topologyKey,omitempty"`
+}
+
 // KafkaStatus defines the observed state of Kafka
 type KafkaStatus struct {
 	// Specifies the current phase of the database
@@ -170,14 +185,12 @@ type KafkaStatus struct {
 	// Conditions applied to the database, such as approval or denial.
 	// +optional
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
-	// +optional
-	Gateway *Gateway `json:"gateway,omitempty"`
 }
 
 type KafkaCruiseControl struct {
 	// Configuration for cruise-control
 	// +optional
-	ConfigSecret *SecretReference `json:"configSecret,omitempty"`
+	ConfigSecret *core.LocalObjectReference `json:"configSecret,omitempty"`
 
 	// Replicas represents number of replica for this specific type of node
 	// +optional

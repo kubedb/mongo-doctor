@@ -16,7 +16,11 @@ limitations under the License.
 
 package apis
 
-import "time"
+import (
+	"time"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
 
 const (
 	KubeStashKey              = "kubestash.com"
@@ -49,16 +53,18 @@ const (
 	PrefixRetentionPolicy = "retentionpolicy"
 	PrefixPopulate        = "populate"
 	PrefixPrime           = "prime"
+	PrefixTriggerVerifier = "trigger-verifier"
 )
 
 const (
-	KubeStashBackupComponent      = "kubestash-backup"
-	KubeStashRestoreComponent     = "kubestash-restore"
-	KubeStashInitializerComponent = "kubestash-initializer"
-	KubeStashUploaderComponent    = "kubestash-uploader"
-	KubeStashCleanerComponent     = "kubestash-cleaner"
-	KubeStashHookComponent        = "kubestash-hook"
-	KubeStashPopulatorComponent   = "kubestash-populator"
+	KubeStashBackupComponent         = "kubestash-backup"
+	KubeStashRestoreComponent        = "kubestash-restore"
+	KubeStashInitializerComponent    = "kubestash-initializer"
+	KubeStashUploaderComponent       = "kubestash-uploader"
+	KubeStashCleanerComponent        = "kubestash-cleaner"
+	KubeStashHookComponent           = "kubestash-hook"
+	KubeStashPopulatorComponent      = "kubestash-populator"
+	KubeStashBackupVerifierComponent = "kubestash-backup-verifier"
 )
 
 // Keys for offshoot labels
@@ -93,7 +99,7 @@ const (
 
 	KeyBlueprintName      = BackupBlueprintKey + "/name"
 	KeyBlueprintNamespace = BackupBlueprintKey + "/namespace"
-	KeyBlueprintSessions  = BackupBlueprintKey + "/sessions"
+	KeyBlueprintSessions  = BackupBlueprintKey + "/session-names"
 )
 
 // RBAC related
@@ -104,6 +110,8 @@ const (
 	KubeStashBackendJobClusterRole         = "kubestash-backend-job"
 	KubeStashStorageInitializerClusterRole = "kubestash-storage-initializer-job"
 	KubeStashPopulatorJobClusterRole       = "kubestash-populator-job"
+	KubeStashRetentionPolicyJobClusterRole = "kubestash-retention-policy-job"
+	KubeStashBackupVerifierJobClusterRole  = "kubestash-backup-verifier-job"
 )
 
 // Reconciliation related
@@ -137,17 +145,87 @@ const (
 	ComponentManifest       = "manifest"
 	ComponentVolumeSnapshot = "volumesnapshot"
 	ComponentDashboard      = "dashboard"
+	ComponentPhysical       = "physical"
 )
 
 const (
-	EnvComponentName = "COMPONENT_NAME"
-	KeyPodOrdinal    = "POD_ORDINAL"
-	KeyPVCName       = "PVC_NAME"
-	KeyDBVersion     = "DB_VERSION"
-	KeyInterimVolume = "INTERIM_VOLUME"
+	EnvComponentName     = "COMPONENT_NAME"
+	KeyPodOrdinal        = "POD_ORDINAL"
+	KeyPVCName           = "PVC_NAME"
+	KeyDBVersion         = "DB_VERSION"
+	KeyInterimVolume     = "INTERIM_VOLUME"
+	KeyResticCacheVolume = "RESTIC_CACHE_VOLUME"
 
-	InterimVolumeName = "kubestash-interim-volume"
-	OwnerKey          = ".metadata.controller"
-	SnapshotVersionV1 = "v1"
-	DirRepository     = "repository"
+	ResticCacheVolumeName = TempDirVolumeName
+	InterimVolumeName     = "kubestash-interim-volume"
+	OwnerKey              = ".metadata.controller"
+	SnapshotVersionV1     = "v1"
+	DirRepository         = "repository"
 )
+
+// Annotations
+const (
+	AnnKubeDBAppVersion          = "kubedb.com/db-version"
+	AnnRestoreSessionBeneficiary = "restoresession.kubestash.com/beneficiary"
+)
+
+// Tasks name related constants
+const (
+	LogicalBackup        = "logical-backup"
+	LogicalBackupRestore = "logical-backup-restore"
+
+	ManifestBackup  = "manifest-backup"
+	ManifestRestore = "manifest-restore"
+
+	VolumeSnapshot        = "volume-snapshot"
+	VolumeSnapshotRestore = "volume-snapshot-restore"
+
+	VolumeClone = "volume-clone"
+)
+
+// Directory names for cluster and namespace scoped resources
+const (
+	ClusterScopedDir   = "cluster"
+	NamespaceScopedDir = "namespaces"
+)
+
+// GroupResources for various Kubernetes resources
+var (
+	ClusterRoleBindings       = schema.GroupResource{Group: "rbac.authorization.k8s.io", Resource: "clusterrolebindings"}
+	ClusterRoles              = schema.GroupResource{Group: "rbac.authorization.k8s.io", Resource: "clusterroles"}
+	CustomResourceDefinitions = schema.GroupResource{Group: "apiextensions.k8s.io", Resource: "customresourcedefinitions"}
+	DaemonSets                = schema.GroupResource{Group: "apps", Resource: "daemonsets"}
+	Deployments               = schema.GroupResource{Group: "apps", Resource: "deployments"}
+	Jobs                      = schema.GroupResource{Group: "batch", Resource: "jobs"}
+	Namespaces                = schema.GroupResource{Group: "", Resource: "namespaces"}
+	PersistentVolumeClaims    = schema.GroupResource{Group: "", Resource: "persistentvolumeclaims"}
+	PersistentVolumes         = schema.GroupResource{Group: "", Resource: "persistentvolumes"}
+	Pods                      = schema.GroupResource{Group: "", Resource: "pods"}
+	ReplicationControllers    = schema.GroupResource{Group: "", Resource: "replicationcontrollers"}
+	ReplicaSets               = schema.GroupResource{Group: "apps", Resource: "replicasets"}
+	ServiceAccounts           = schema.GroupResource{Group: "", Resource: "serviceaccounts"}
+	Secrets                   = schema.GroupResource{Group: "", Resource: "secrets"}
+	Statefulsets              = schema.GroupResource{Group: "apps", Resource: "statefulsets"}
+	VolumeSnapshotClasses     = schema.GroupResource{Group: "snapshot.storage.k8s.io", Resource: "volumesnapshotclasses"}
+	VolumeSnapshots           = schema.GroupResource{Group: "snapshot.storage.k8s.io", Resource: "volumesnapshots"}
+	VolumeSnapshotContents    = schema.GroupResource{Group: "snapshot.storage.k8s.io", Resource: "volumesnapshotcontents"}
+	PriorityClasses           = schema.GroupResource{Group: "scheduling.k8s.io", Resource: "priorityclasses"}
+)
+
+// DefaultNonRestorableResources lists resources that are not restorable by default.
+var DefaultNonRestorableResources = []string{
+	"nodes",
+	"events",
+	"events.events.k8s.io",
+	"storage",
+	"csinodes.storage.k8s.io",
+	"volumeattachments.storage.k8s.io",
+
+	// kubestash specific
+	"backupsessions.core.kubestash.com",
+	"backupverificationsession.core.kubestash.com",
+	"backupverifier.core.kubestash.com",
+	"repositories.storage.kubestash.com",
+	"restoresessions.core.kubestash.com",
+	"snapshots.storage.kubestash.com",
+}

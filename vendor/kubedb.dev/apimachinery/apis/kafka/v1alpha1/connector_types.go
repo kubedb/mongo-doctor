@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +39,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=kc,scope=Namespaced
+// +kubebuilder:resource:path=connectors,singular=connector,shortName=kc,categories={kfstore,kubedb,appscode}
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".apiVersion"
 // +kubebuilder:printcolumn:name="ConnectCluster",type="string",JSONPath=".spec.connectClusterRef.name"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
@@ -58,12 +58,18 @@ type ConnectorSpec struct {
 	// ConnectClusterRef is a required field, where Connector will add tasks to produce or consume data from kafka topics.
 	ConnectClusterRef *kmapi.ObjectReference `json:"connectClusterRef"`
 
-	// ConfigSecret is a required field to provide configuration file for Connector to create connectors for Kafka connect cluster(i.e connector.properties).
-	ConfigSecret *core.LocalObjectReference `json:"configSecret"`
-
-	// TerminationPolicy controls the delete operation for Connector
+	// ConfigSecret is deprecated and will be removed in a future release.
+	// Use `configuration` instead.
 	// +optional
-	TerminationPolicy api.TerminationPolicy `json:"terminationPolicy,omitempty"`
+	// +kubebuilder:deprecatedversion
+	ConfigSecret *core.LocalObjectReference `json:"configSecret,omitempty"`
+
+	// Configuration is a required field to provide a configuration file for Connector to create connectors for Kafka connect cluster(i.e. connector.properties).
+	Configuration *dbapi.ConfigurationSpec `json:"configuration"`
+
+	// DeletionPolicy controls the delete operation for database
+	// +optional
+	DeletionPolicy dbapi.DeletionPolicy `json:"deletionPolicy,omitempty"`
 }
 
 // ConnectorStatus defines the observed state of connectors

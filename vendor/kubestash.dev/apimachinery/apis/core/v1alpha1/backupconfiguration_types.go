@@ -21,7 +21,6 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	kmapi "kmodules.xyz/client-go/api/v1"
 	ofst "kmodules.xyz/offshoot-api/api/v1"
 )
@@ -59,8 +58,8 @@ type BackupConfigurationSpec struct {
 	// The respective BackupStorages can be in a different namespace than the BackupConfiguration.
 	// However, it must be allowed by the `usagePolicy` of the BackupStorage to refer from this namespace.
 	//
-	// This field is optional, if you don't provide any backend here, Stash will use the default BackupStorage for the namespace.
-	// If a default BackupStorage does not exist in the same namespace, then Stash will look for a default BackupStorage
+	// This field is optional, if you don't provide any backend here, KubeStash will use the default BackupStorage for the namespace.
+	// If a default BackupStorage does not exist in the same namespace, then KubeStash will look for a default BackupStorage
 	// in other namespaces that allows using it from the BackupConfiguration namespace.
 	// +optional
 	Backends []BackendReference `json:"backends,omitempty"`
@@ -69,7 +68,7 @@ type BackupConfigurationSpec struct {
 	Sessions []Session `json:"sessions,omitempty"`
 
 	// Paused indicates that the BackupConfiguration has been paused from taking backup. Default value is 'false'.
-	// If you set `paused` field to `true`, Stash will suspend the respective backup triggering CronJob and
+	// If you set `paused` field to `true`, KubeStash will suspend the respective backup triggering CronJob and
 	// skip processing any further events for this BackupConfiguration.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
@@ -86,8 +85,8 @@ type BackendReference struct {
 	StorageRef *kmapi.ObjectReference `json:"storageRef,omitempty"`
 
 	// RetentionPolicy refers to a RetentionPolicy CRs which defines how to cleanup the old Snapshots.
-	// This field is optional. If you don't provide this field, Stash will use the default RetentionPolicy for
-	// the namespace. If there is no default RetentionPolicy for the namespace, then Stash will find a
+	// This field is optional. If you don't provide this field, KubeStash will use the default RetentionPolicy for
+	// the namespace. If there is no default RetentionPolicy for the namespace, then KubeStash will find a
 	// RetentionPolicy from other namespaces that is allowed to use from the current namespace.
 	// +optional
 	RetentionPolicy *kmapi.ObjectReference `json:"retentionPolicy,omitempty"`
@@ -101,7 +100,7 @@ type Session struct {
 	Addon *AddonInfo `json:"addon,omitempty"`
 
 	// Repositories specifies a list of repository information where the backed up data will be stored.
-	// Stash will create the respective Repository CRs using this information.
+	// KubeStash will create the respective Repository CRs using this information.
 	Repositories []RepositoryInfo `json:"repositories,omitempty"`
 }
 
@@ -113,32 +112,27 @@ type SessionConfig struct {
 	// Scheduler specifies the configuration for backup triggering CronJob
 	Scheduler *SchedulerSpec `json:"scheduler,omitempty"`
 
-	// VerificationStrategies specifies a list of backup verification configurations
-	// +optional
-	VerificationStrategies []VerificationStrategy `json:"verificationStrategies,omitempty"`
-
 	// Hooks specifies the backup hooks that should be executed before and/or after the backup.
 	// +optional
 	Hooks *BackupHooks `json:"hooks,omitempty"`
 
 	// FailurePolicy specifies what to do if the backup fail.
 	// Valid values are:
-	// - "Fail": Stash should mark the backup as failed if any component fail to complete its backup. This is the default behavior.
-	// - "Retry": Stash will retry to backup the failed component according to the `retryConfig`.
-	// +kubebuilder:default=Fail
+	// - "Fail": KubeStash should mark the backup as failed if any component fail to complete its backup. This is the default behavior.
+	// - "Retry": KubeStash will retry to backup the failed component according to the `retryConfig`.
 	// +optional
-	FailurePolicy FailurePolicy `json:"failurePolicy,omitempty"`
+	// FailurePolicy FailurePolicy `json:"failurePolicy,omitempty"`
 
 	// RetryConfig specifies the behavior of retry in case of a backup failure.
 	// +optional
 	RetryConfig *RetryConfig `json:"retryConfig,omitempty"`
 
-	// Timeout specifies the maximum duration of backup. BackupSession will be considered Failed
-	// if backup does not complete within this time limit. By default, Stash don't set any timeout for backup.
+	// BackupTimeout specifies the maximum duration of backup. Backup will be considered Failed
+	// if backup tasks do not complete within this time limit. By default, KubeStash don't set any timeout for backup.
 	// +optional
-	Timeout *metav1.Duration `json:"timeout,omitempty"`
+	BackupTimeout *metav1.Duration `json:"backupTimeout,omitempty"`
 
-	// SessionHistoryLimit specifies how many backup Jobs and associate resources Stash should keep for debugging purpose.
+	// SessionHistoryLimit specifies how many backup Jobs and associate resources KubeStash should keep for debugging purpose.
 	// The default value is 1.
 	// +kubebuilder:default=1
 	// +optional
@@ -266,7 +260,7 @@ type JobTemplate struct {
 }
 
 // RepositoryInfo specifies information about the repository where the backed up data will be stored.
-// Stash will create the respective Repository CR from this information.
+// KubeStash will create the respective Repository CR from this information.
 type RepositoryInfo struct {
 	// Name specifies the name of the Repository
 	Name string `json:"name,omitempty"`
@@ -277,46 +271,21 @@ type RepositoryInfo struct {
 	// +optional
 	Backend string `json:"backend,omitempty"`
 
+	// BackupVerifier specifies the name of the BackupVerifier which will be used to verify the backed up data in this repository.
+	// +optional
+	BackupVerifier *kmapi.ObjectReference `json:"backupVerifier,omitempty"`
+
 	// Directory specifies the path inside the backend where the backed up data will be stored.
 	Directory string `json:"directory,omitempty"`
 
 	// EncryptionSecret refers to the Secret containing the encryption key which will be used to encode/decode the backed up dta.
 	// You can refer to a Secret of a different namespace.
-	// If you don't provide the namespace field, Stash will look for the Secret in the same namespace as the BackupConfiguration / BackupBatch.
+	// If you don't provide the namespace field, KubeStash will look for the Secret in the same namespace as the BackupConfiguration / BackupBatch.
 	EncryptionSecret *kmapi.ObjectReference `json:"encryptionSecret,omitempty"`
 
 	// DeletionPolicy specifies what to do when you delete a Repository CR.
 	// +optional
-	DeletionPolicy v1alpha1.DeletionPolicy `json:"deletionPolicy,omitempty"`
-}
-
-// VerificationStrategy specifies a strategy to verify the backed up data.
-type VerificationStrategy struct {
-	// Name indicate the name of this strategy
-	Name string `json:"name,omitempty"`
-
-	// Repository specifies the name of the repository which data will be verified
-	Repository string `json:"repository,omitempty"`
-
-	// Verifier refers to the BackupVerification CR that defines how to verify this particular data
-	Verifier *kmapi.TypedObjectReference `json:"verifier,omitempty"`
-
-	// Params specifies the parameters that will be used by the verifier
-	// +kubebuilder:pruning:PreserveUnknownFields
-	// +optional
-	Params *runtime.RawExtension `json:"params,omitempty"`
-
-	// VerifyEvery specifies the frequency of backup verification
-	// +kubebuilder:validation:Minimum=1
-	VerifyEvery int32 `json:"verifyEvery,omitempty"`
-
-	// OnFailure specifies what to do if the verification fail.
-	// +optional
-	OnFailure FailurePolicy `json:"onFailure,omitempty"`
-
-	// RetryConfig specifies the behavior of the retry mechanism in case of a verification failure
-	// +optional
-	RetryConfig *RetryConfig `json:"retryConfig,omitempty"`
+	DeletionPolicy v1alpha1.BackupConfigDeletionPolicy `json:"deletionPolicy,omitempty"`
 }
 
 // BackupHooks specifies the hooks that will be executed before and/or after backup
@@ -433,6 +402,10 @@ type RepoStatus struct {
 	// Reason specifies the error messages found while ensuring the respective Repository
 	// +optional
 	Reason string `json:"reason,omitempty"`
+
+	// VerificationConfigured indicates whether the verification for this repository is configured or not
+	// +optional
+	VerificationConfigured bool `json:"verificationConfigured,omitempty"`
 }
 
 // SessionStatus specifies the status of a session specific fields.
@@ -459,6 +432,11 @@ const (
 	TypeSchedulerEnsured      = "SchedulerEnsured"
 	ReasonSchedulerNotEnsured = "SchedulerNotEnsured"
 	ReasonSchedulerEnsured    = "SchedulerEnsured"
+
+	// TypeInitialBackupTriggered indicates whether the initial backup is triggered or not.
+	TypeInitialBackupTriggered               = "InitialBackupTriggered"
+	ReasonFailedToTriggerInitialBackup       = "FailedToTriggerInitialBackup"
+	ReasonSuccessfullyTriggeredInitialBackup = "SuccessfullyTriggeredInitialBackup"
 )
 
 //+kubebuilder:object:root=true

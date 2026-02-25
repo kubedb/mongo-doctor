@@ -1,0 +1,91 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mongo-doctor
+  namespace: mongodb-federation-6ui39i
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: mongo-doctor
+rules:
+  - apiGroups: ["kubedb.com"]
+    resources: ["mongodbs"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create"]
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mongo-doctor
+subjects:
+  - kind: ServiceAccount
+    name: mongo-doctor
+    namespace: mongodb-federation-6ui39i
+    apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: mongo-doctor
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps.k8s.appscode.com/v1
+kind: PlacementPolicy
+metadata:
+  name: hard-default
+spec:
+  nodeSpreadConstraint:
+    maxSkew: 1
+    whenUnsatisfiable: DoNotSchedule
+  zoneSpreadConstraint:
+    maxSkew: 1
+    whenUnsatisfiable: DoNotSchedule
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: doctor
+  namespace: mongodb-federation-6ui39i
+spec:
+  template:
+    spec:
+      containers:
+        - name: doctor
+          env:
+            - name: MONGODB_NAME
+              value: "mm" # mm / test
+            - name: MONGODB_NAMESPACE
+              value: "default"
+          #        - name: MONGODB_URI
+          #          value: "<>"
+          #        - name: SLOW_MS
+          #          value: "2"
+          resources:
+            requests:
+              cpu: 1
+              memory: 1Gi
+          image: ghcr.io/kubedb/mongo-doctor:v0.1.0
+          imagePullPolicy: Always
+          securityContext:
+            runAsUser: 1000  # it could be another user id depending on the image that you are using
+            runAsGroup: 1000  # it could be another group id depending on the image that you are using
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: "RuntimeDefault"
+            capabilities:
+              drop:
+                - "ALL"
+      serviceAccountName: mongo-doctor
+      restartPolicy: Never
+  backoffLimit: 4

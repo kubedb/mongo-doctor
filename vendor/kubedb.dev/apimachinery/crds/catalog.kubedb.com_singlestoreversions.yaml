@@ -9,7 +9,7 @@ spec:
   group: catalog.kubedb.com
   names:
     categories:
-    - datastore
+    - catalog
     - kubedb
     - appscode
     kind: SinglestoreVersion
@@ -60,6 +60,8 @@ spec:
                 - image
                 type: object
               deprecated:
+                type: boolean
+              endOfLife:
                 type: boolean
               initContainer:
                 properties:

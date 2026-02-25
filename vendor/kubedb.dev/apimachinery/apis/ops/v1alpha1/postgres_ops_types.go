@@ -18,7 +18,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	apis "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
+	dbapi "kubedb.dev/apimachinery/apis/kubedb/v1"
 
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -39,7 +39,7 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=postgresopsrequests,singular=postgresopsrequest,shortName=pgops,categories={datastore,kubedb,appscode}
+// +kubebuilder:resource:path=postgresopsrequests,singular=postgresopsrequest,shortName=pgops,categories={ops,kubedb,appscode}
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
@@ -55,11 +55,11 @@ type PostgresTLSSpec struct {
 
 	// SSLMode for both standalone and clusters. [disable;allow;prefer;require;verify-ca;verify-full]
 	// +optional
-	SSLMode apis.PostgresSSLMode `json:"sslMode,omitempty"`
+	SSLMode dbapi.PostgresSSLMode `json:"sslMode,omitempty"`
 
 	// ClientAuthMode for sidecar or sharding. (default will be md5. [md5;scram;cert])
 	// +optional
-	ClientAuthMode apis.PostgresClientAuthMode `json:"clientAuthMode,omitempty"`
+	ClientAuthMode dbapi.PostgresClientAuthMode `json:"clientAuthMode,omitempty"`
 }
 
 // PostgresOpsRequestSpec is the spec for PostgresOpsRequest
@@ -80,17 +80,29 @@ type PostgresOpsRequestSpec struct {
 	Configuration *PostgresCustomConfigurationSpec `json:"configuration,omitempty"`
 	// Specifies information necessary for configuring TLS
 	TLS *PostgresTLSSpec `json:"tls,omitempty"`
+	// Specifies information necessary for configuring authSecret of the database
+	Authentication *AuthSpec `json:"authentication,omitempty"`
 	// Specifies information necessary for restarting database
 	Restart *RestartSpec `json:"restart,omitempty"`
+	// Try to reconnect standby's with primary
+	ReconnectStandby *PostgresReconnectStandby `json:"reconnectStandby,omitempty"`
+	// Forcefully do a failover to the given candidate
+	ForceFailOver *PostgresForceFailOver `json:"forceFailOver,omitempty"`
+	// Set given key pairs to raft storage
+	SetRaftKeyPair *PostgresSetRaftKeyPair `json:"setRaftKeyPair,omitempty"`
+	// Specifies information necessary for migrating storageClass or data
+	Migration *PostgresMigrationSpec `json:"migration,omitempty"`
 	// Timeout for each step of the ops request in second. If a step doesn't finish within the specified timeout, the ops request will result in failure.
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// ApplyOption is to control the execution of OpsRequest depending on the database state.
 	// +kubebuilder:default="IfReady"
 	Apply ApplyOption `json:"apply,omitempty"`
+	// +kubebuilder:default=1
+	MaxRetries int32 `json:"maxRetries,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=Upgrade;UpdateVersion;HorizontalScaling;VerticalScaling;VolumeExpansion;Restart;Reconfigure;ReconfigureTLS
-// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, VolumeExpansion, Restart, Reconfigure, ReconfigureTLS)
+// +kubebuilder:validation:Enum=Upgrade;UpdateVersion;HorizontalScaling;VerticalScaling;VolumeExpansion;Restart;Reconfigure;ReconfigureTLS;RotateAuth;ReconnectStandby;ForceFailOver;SetRaftKeyPair;StorageMigration
+// ENUM(UpdateVersion, HorizontalScaling, VerticalScaling, VolumeExpansion, Restart, Reconfigure, ReconfigureTLS, RotateAuth, ReconnectStandby, ForceFailOver, SetRaftKeyPair, StorageMigration)
 type PostgresOpsRequestType string
 
 type PostgresUpdateVersionSpec struct {
@@ -114,11 +126,13 @@ const (
 	WarmPostgresStandbyMode PostgresStandbyMode = "Warm"
 )
 
+type PostgresPrimaryCandidate string
+
 // HorizontalScaling is the spec for Postgres horizontal scaling
 type PostgresHorizontalScalingSpec struct {
 	Replicas *int32 `json:"replicas,omitempty"`
 	// Standby mode
-	// +kubebuilder:default="Warm"
+	// +kubebuilder:default="Hot"
 	StandbyMode *PostgresStandbyMode `json:"standbyMode,omitempty"`
 
 	// Streaming mode
@@ -134,6 +148,11 @@ type PostgresVerticalScalingSpec struct {
 	Arbiter     *PodResources       `json:"arbiter,omitempty"`
 }
 
+type PostgresMigrationSpec struct {
+	StorageClassName   *string                            `json:"storageClassName"`
+	OldPVReclaimPolicy core.PersistentVolumeReclaimPolicy `json:"oldPVReclaimPolicy,omitempty"`
+}
+
 // PostgresVolumeExpansionSpec is the spec for Postgres volume expansion
 type PostgresVolumeExpansionSpec struct {
 	// volume specification for Postgres
@@ -143,9 +162,8 @@ type PostgresVolumeExpansionSpec struct {
 }
 
 type PostgresCustomConfigurationSpec struct {
-	ConfigSecret       *core.LocalObjectReference `json:"configSecret,omitempty"`
-	InlineConfig       string                     `json:"inlineConfig,omitempty"`
-	RemoveCustomConfig bool                       `json:"removeCustomConfig,omitempty"`
+	Tuning              *PostgresTuningConfig `json:"tuning,omitempty"`
+	ReconfigurationSpec `json:",inline,omitempty"`
 }
 
 type PostgresCustomConfiguration struct {
@@ -153,6 +171,74 @@ type PostgresCustomConfiguration struct {
 	Data      map[string]string          `json:"data,omitempty"`
 	Remove    bool                       `json:"remove,omitempty"`
 }
+
+type PostgresReconnectStandby struct {
+	// ReadyTimeOut is the time to wait for standby`s to become ready
+	// +optional
+	ReadyTimeOut *metav1.Duration `json:"readyTimeOut,omitempty"`
+}
+
+type PostgresForceFailOver struct {
+	Candidates []PostgresPrimaryCandidate `json:"candidates,omitempty"`
+}
+
+type PostgresSetRaftKeyPair struct {
+	KeyPair map[string]string `json:"keyPair,omitempty"`
+}
+
+// PostgresTuningConfig defines configuration for PostgreSQL performance tuning
+type PostgresTuningConfig struct {
+	// Profile defines a predefined tuning profile for different workload types.
+	// If specified, other tuning parameters will be calculated based on this profile.
+	// +optional
+	Profile *PostgresProfile `json:"profile,omitempty"`
+
+	// MaxConnections defines the maximum number of concurrent connections.
+	// If not specified, it will be calculated based on available memory and tuning profile.
+	// +optional
+	MaxConnections *int32 `json:"maxConnections,omitempty"`
+
+	// StorageType defines the type of storage for tuning purposes.
+	// If not specified, it will be inferred from StorageClass or default to HDD.
+	// +optional
+	StorageType *PostgresStorageType `json:"storageType,omitempty"`
+
+	// DisableAutoTune disables automatic tuning entirely.
+	// If set to true, no tuning will be applied.
+	// +optional
+	DisableAutoTune bool `json:"disableAutoTune,omitempty"`
+}
+
+// PostgresProfile defines predefined tuning profiles
+// +kubebuilder:validation:Enum=web;oltp;dw;mixed;desktop
+type PostgresProfile string
+
+const (
+	// PostgresTuningProfileWeb optimizes for web applications with many simple queries
+	PostgresTuningProfileWeb PostgresProfile = "web"
+
+	// PostgresTuningProfileOLTP optimizes for OLTP workloads with many short transactions
+	PostgresTuningProfileOLTP PostgresProfile = "oltp"
+
+	// PostgresTuningProfileDW optimizes for data warehousing with complex analytical queries
+	PostgresTuningProfileDW PostgresProfile = "dw"
+
+	// PostgresTuningProfileMixed optimizes for mixed workloads
+	PostgresTuningProfileMixed PostgresProfile = "mixed"
+
+	// PostgresTuningProfileDesktop optimizes for desktop or development environments
+	PostgresTuningProfileDesktop PostgresProfile = "desktop"
+)
+
+// PostgresStorageType defines storage types for tuning purposes
+// +kubebuilder:validation:Enum=ssd;hdd;san
+type PostgresStorageType string
+
+const (
+	PostgresStorageTypeSSD PostgresStorageType = "ssd"
+	PostgresStorageTypeHDD PostgresStorageType = "hdd"
+	PostgresStorageTypeSAN PostgresStorageType = "san"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
